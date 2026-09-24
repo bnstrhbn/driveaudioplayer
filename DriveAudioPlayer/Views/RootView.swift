@@ -33,6 +33,8 @@ struct RootView: View {
 private struct SignInView: View {
     @Environment(AppState.self) private var app
     let sessionExpired: Bool
+    /// Why the previous session ended, if it ended on its own.
+    private var reason: String? { GoogleAuthService.lastSessionEndReason }
 
     var body: some View {
         VStack(spacing: 16) {
@@ -53,13 +55,20 @@ private struct SignInView: View {
 
             Spacer()
 
-            if sessionExpired {
+            if sessionExpired || reason != nil {
                 Label {
                     VStack(alignment: .leading, spacing: 2) {
                         Text("Signed out of Google").font(.subheadline.weight(.semibold))
-                        Text("Your session expired. Sign in again to keep listening — your downloads are still here.")
+                        Text("Sign in again to keep listening — your downloads are still here.")
                             .font(.footnote)
                             .foregroundStyle(.secondary)
+                        if let reason {
+                            Text(reason)
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                                .padding(.top, 4)
+                                .textSelection(.enabled)
+                        }
                     }
                 } icon: {
                     Image(systemName: "person.crop.circle.badge.exclamationmark")
