@@ -95,7 +95,10 @@ final class AppState {
         var candidates = [file]
         if let index = playlist.firstIndex(of: file), playlist.count > 1 { candidates.append(playlist[(index + 1) % playlist.count]) }
         for track in candidates where localURL(for: track) == nil {
-            Task { await cache.cache(track, from: drive) }
+            Task { await cache.cache(track, from: drive, unless: { [downloads] in downloads.contains(track) }) }
         }
     }
+
+    func download(_ file: DriveFile) async throws { try await downloads.download(file, from: drive, promotingFrom: cache) }
+    func downloadAll(_ files: [DriveFile], batchID: String) { downloads.downloadAll(files, batchID: batchID, from: drive, promotingFrom: cache) }
 }

@@ -64,6 +64,7 @@ private struct LocationView: View {
             isLoading: isLoading,
             empty: (location.emptyTitle, location.symbolName, location.emptyMessage),
             refresh: load,
+            batchID: "location-\(location.rawValue)",
             showsSharingInfo: location == .sharedWithMe
         )
         .navigationTitle(location.title)
@@ -188,7 +189,8 @@ struct FolderView: View {
             contents: contents,
             isLoading: isLoading,
             empty: ("Empty Folder", "folder", "No audio files or folders here."),
-            refresh: load
+            refresh: load,
+            batchID: folder.contentID
         )
         .navigationTitle(folder.name).navigationBarTitleDisplayMode(.inline)
         .locationMenu(current: nil, path: $path)
@@ -258,11 +260,16 @@ struct FileListView: View {
     let isLoading: Bool
     let empty: (title: String, symbol: String, message: String)
     let refresh: () async -> Void
+    /// Identifies this listing's folder-download batch (folder or location ID).
+    let batchID: String
     /// Show who shared each item and when (Shared with me).
     var showsSharingInfo = false
     @State private var error: String?
     @State private var downloadsInProgress = Set<String>()
+    @State private var confirmCellularDownload = false
     var tracks: [DriveFile] { contents.filter(\.isPlayableAudio) }
+    private var downloadedTracks: [DriveFile] { tracks.filter(app.downloads.contains) }
+    private var pendingBytes: Int64 { tracks.filter { !app.downloads.contains($0) && !app.cache.contains($0) }.compactMap { Int64($0.size ?? "") }.reduce(0, +) }
 
     var body: some View {
         List {
@@ -276,8 +283,9 @@ struct FileListView: View {
                     .buttonStyle(.borderedProminent)
                     .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
                     .listRowSeparator(.hidden)
-                } footer: {
-                    Text("\(tracks.count) track\(tracks.count == 1 ? "" : "s")")
+                    folderDownloadRow
+                        .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 8, trailing: 16))
+                        .listRowSeparator(.hidden)
                 }
             }
             Section { ForEach(contents) { file in row(file) } }
@@ -293,6 +301,49 @@ struct FileListView: View {
         }
         .alert("Drive Audio", isPresented: Binding(get: { error != nil }, set: { if !$0 { error = nil } })) { Button("OK") {} } message: { Text(error ?? "") }
     }
+    /// Track count plus the folder-level offline control: download all,
+    /// live progress with cancel, or remove when everything is downloaded.
+    private var folderDownloadRow: some View {
+        HStack {
+            Text("\(tracks.count) track\(tracks.count == 1 ? "" : "s")")
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+            Spacer()
+            if let batch = app.downloads.batches[batchID] {
+                ProgressView(value: Double(batch.completed + batch.failed), total: Double(batch.total))
+                    .frame(width: 80)
+                Text("\(batch.completed + batch.failed) of \(batch.total)")
+                    .font(.footnote.monospacedDigit())
+                    .foregroundStyle(.secondary)
+                Button("Cancel", role: .cancel) { app.downloads.cancelBatch(batchID) }
+                    .font(.footnote)
+            } else if downloadedTracks.count == tracks.count {
+                Menu {
+                    Button("Remove Downloads", systemImage: "trash", role: .destructive) { app.downloads.deleteAll(downloadedTracks) }
+                } label: {
+                    Label("Downloaded", systemImage: "checkmark.circle.fill")
+                        .font(.footnote.weight(.medium))
+                        .foregroundStyle(.green)
+                }
+            } else {
+                Button {
+                    if app.player.isOnExpensiveNetwork && pendingBytes > 0 { confirmCellularDownload = true } else { downloadAll() }
+                } label: {
+                    Label(downloadedTracks.isEmpty ? "Download All" : "Download Remaining", systemImage: "arrow.down.circle")
+                        .font(.footnote.weight(.medium))
+                }
+                .confirmationDialog("Download \(ByteCountFormatter.string(fromByteCount: pendingBytes, countStyle: .file)) over cellular?", isPresented: $confirmCellularDownload, titleVisibility: .visible) {
+                    Button("Download") { downloadAll() }
+                } message: {
+                    Text("You're not on Wi‑Fi. Downloading now will use cellular data and more battery.")
+                }
+            }
+        }
+        .buttonStyle(.borderless)
+        .animation(.default, value: app.downloads.batches[batchID])
+    }
+    private func downloadAll() { app.downloadAll(tracks, batchID: batchID) }
+
     @ViewBuilder private func row(_ file: DriveFile) -> some View {
         if file.isFolder {
             NavigationLink(value: BrowserDestination.folder(file)) {
@@ -332,13 +383,14 @@ struct FileListView: View {
                     }
                     Spacer(minLength: 8)
                     if downloadsInProgress.contains(file.id) { ProgressView() }
-                    else if app.downloads.localURL(for: file) != nil { Image(systemName: "arrow.down.circle.fill").foregroundStyle(.green).accessibilityLabel("Downloaded") }
+                    else if app.downloads.contains(file) { Image(systemName: "arrow.down.circle.fill").foregroundStyle(.green).accessibilityLabel("Downloaded") }
+                    else if app.cache.contains(file) { Image(systemName: "internaldrive").foregroundStyle(.tertiary).accessibilityLabel("Cached for offline") }
                 }
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-                .contextMenu { if app.downloads.localURL(for: file) == nil { Button("Download for Offline", systemImage: "arrow.down.circle") { Task { await download(file) } } } else { Button("Remove Download", systemImage: "trash", role: .destructive) { app.downloads.delete(file) } } }
-                .swipeActions { if app.downloads.localURL(for: file) == nil { Button { Task { await download(file) } } label: { Label("Download", systemImage: "arrow.down.circle") }.tint(.blue) } }
+                .contextMenu { if !app.downloads.contains(file) { Button(app.cache.contains(file) ? "Keep Downloaded" : "Download for Offline", systemImage: "arrow.down.circle") { Task { await download(file) } } } else { Button("Remove Download", systemImage: "trash", role: .destructive) { app.downloads.delete(file) } } }
+                .swipeActions { if !app.downloads.contains(file) { Button { Task { await download(file) } } label: { Label(app.cache.contains(file) ? "Keep" : "Download", systemImage: "arrow.down.circle") }.tint(.blue) } }
         }
     }
     @ViewBuilder private func sharingInfo(_ file: DriveFile) -> some View {
@@ -362,7 +414,7 @@ struct FileListView: View {
         }
     }
     private func play(_ file: DriveFile) { Task { do { try await app.play(file, playlist: tracks) } catch { self.error = error.localizedDescription } } }
-    private func download(_ file: DriveFile) async { downloadsInProgress.insert(file.id); defer { downloadsInProgress.remove(file.id) }; do { try await app.downloads.download(file, from: app.drive) { _ in } } catch { self.error = error.localizedDescription } }
+    private func download(_ file: DriveFile) async { downloadsInProgress.insert(file.id); defer { downloadsInProgress.remove(file.id) }; do { try await app.download(file) } catch { self.error = error.localizedDescription } }
 }
 
 struct MiniPlayerView: View {

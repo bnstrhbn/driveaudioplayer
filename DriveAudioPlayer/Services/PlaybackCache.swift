@@ -43,15 +43,28 @@ final class PlaybackCache {
 
     func contains(_ file: DriveFile) -> Bool { entries.contains { $0.fileID == file.id } }
 
+    /// Removes the track from the cache index and hands its file to the caller
+    /// (used to promote a cached track to a permanent download without refetching).
+    func take(_ file: DriveFile) -> URL? {
+        guard let index = entries.firstIndex(where: { $0.fileID == file.id }) else { return nil }
+        let url = directory.appending(path: entries[index].relativePath)
+        entries.remove(at: index)
+        save()
+        return FileManager.default.fileExists(atPath: url.path) ? url : nil
+    }
+
     /// Fetches the track into the cache. Concurrent requests for the same track
     /// collapse into one; failures are silent because caching is best-effort.
-    func cache(_ file: DriveFile, from drive: GoogleDriveService) async {
-        guard !contains(file), !inFlight.contains(file.id) else { return }
+    /// `unless` lets the caller skip tracks that already exist elsewhere.
+    func cache(_ file: DriveFile, from drive: GoogleDriveService, unless alreadyStored: @MainActor () -> Bool = { false }) async {
+        guard !contains(file), !inFlight.contains(file.id), !alreadyStored() else { return }
         inFlight.insert(file.id)
         defer { inFlight.remove(file.id) }
         guard let request = try? await drive.authorizedRequest(for: file),
               let (temporaryURL, response) = try? await URLSession.shared.download(for: request),
               (response as? HTTPURLResponse)?.statusCode == 200 else { return }
+        // The track may have become a permanent download while this was in flight.
+        guard !alreadyStored() else { try? FileManager.default.removeItem(at: temporaryURL); return }
         let filename = "\(file.id)-\(file.name.replacingOccurrences(of: "/", with: "-"))"
         let destination = directory.appending(path: filename)
         try? FileManager.default.removeItem(at: destination)
