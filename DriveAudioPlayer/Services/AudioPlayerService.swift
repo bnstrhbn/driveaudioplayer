@@ -66,20 +66,34 @@ final class AudioPlayerService {
     /// The player's actual position. `currentTime` is only ticked while the UI
     /// is visible, so anything relative (skip ±15, "previous") must use this.
     private var livePosition: Double {
+        // While a seek is in flight the player still reports the old position;
+        // the requested target is the truth until it lands.
+        if isSeekPending { return currentTime }
         let seconds = player?.currentTime().seconds ?? currentTime
         return seconds.isFinite ? seconds : currentTime
     }
     private func syncTime() { currentTime = livePosition }
+    private var latestSeek = 0
+    private var isSeekPending = false
     func seek(to time: Double) {
         let clampedTime = min(max(time, 0), duration > 0 ? duration : time)
         // Reflect the target immediately so the UI and lock screen don't wait on
         // (or miss, if superseded) the asynchronous completion.
         currentTime = clampedTime
         updateNowPlaying()
-        player?.seek(to: CMTime(seconds: clampedTime, preferredTimescale: 600), toleranceBefore: .zero, toleranceAfter: .zero) { [weak self] finished in
-            guard finished else { return }
-            Task { @MainActor in self?.syncTime(); self?.updateNowPlaying() }
+        latestSeek += 1
+        let id = latestSeek
+        isSeekPending = true
+        player?.seek(to: CMTime(seconds: clampedTime, preferredTimescale: 600), toleranceBefore: .zero, toleranceAfter: .zero) { [weak self] _ in
+            // Only the newest seek may clear the flag; superseded ones are ignored.
+            Task { @MainActor in self?.seekDidLand(id) }
         }
+    }
+    private func seekDidLand(_ id: Int) {
+        guard id == latestSeek else { return }
+        isSeekPending = false
+        syncTime()
+        updateNowPlaying()
     }
     func seek(by seconds: Double) {
         let limit = duration.isFinite && duration > 0 ? duration : .greatestFiniteMagnitude
@@ -102,7 +116,7 @@ final class AudioPlayerService {
         trackSelectionHandler?(playlist[next])
         return true
     }
-    func stop(keepCurrent: Bool = false) { stopProgressUpdates(); if let endObserver { NotificationCenter.default.removeObserver(endObserver) }; endObserver = nil; player?.pause(); player = nil; isPlaying = false; if !keepCurrent { current = nil }; MPNowPlayingInfoCenter.default().nowPlayingInfo = nil }
+    func stop(keepCurrent: Bool = false) { stopProgressUpdates(); if let endObserver { NotificationCenter.default.removeObserver(endObserver) }; endObserver = nil; player?.pause(); player = nil; isPlaying = false; latestSeek += 1; isSeekPending = false; if !keepCurrent { current = nil }; MPNowPlayingInfoCenter.default().nowPlayingInfo = nil }
     private func configureAudioSession() {
         do {
             try AVAudioSession.sharedInstance().setCategory(.playback, mode: .default)
@@ -225,7 +239,8 @@ final class AudioPlayerService {
         }
     }
     private func didUpdateProgress(_ seconds: Double) {
-        currentTime = seconds.isFinite ? seconds : 0
+        // Ticks that arrive mid-seek still describe the old position.
+        if !isSeekPending { currentTime = seconds.isFinite ? seconds : 0 }
         let reported = player?.currentItem?.duration.seconds ?? 0
         let newDuration = reported.isFinite ? reported : 0
         guard newDuration != duration else { return }

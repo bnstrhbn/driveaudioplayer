@@ -438,6 +438,9 @@ struct MiniPlayerView: View {
         guard app.player.duration > 0 else { return 0 }
         return min(max(app.player.currentTime / app.player.duration, 0), 1)
     }
+    /// The time shown in the labels: the scrub target while dragging, otherwise
+    /// the playback position.
+    private var displayedTime: Double { isScrubbing ? scrubPosition * app.player.duration : app.player.currentTime }
     private var trackPosition: String? {
         guard let current = app.player.current,
               let index = app.player.playlist.firstIndex(of: current),
@@ -478,20 +481,26 @@ struct MiniPlayerView: View {
             Slider(
                 value: Binding(
                     get: { isScrubbing ? scrubPosition : progress },
-                    set: { scrubPosition = $0 }
+                    // A value change can arrive before onEditingChanged(true);
+                    // treat it as the start of a scrub so the thumb never snaps back.
+                    set: { scrubPosition = $0; isScrubbing = true }
                 ),
                 in: 0...1,
                 onEditingChanged: { editing in
-                    isScrubbing = editing
-                    if !editing { app.player.seek(to: scrubPosition * app.player.duration) }
+                    if editing {
+                        if !isScrubbing { scrubPosition = progress; isScrubbing = true }
+                    } else {
+                        app.player.seek(to: scrubPosition * app.player.duration)
+                        isScrubbing = false
+                    }
                 }
             )
             .disabled(app.player.duration <= 0)
             .accessibilityLabel("Playback position")
-            .accessibilityValue(time(app.player.currentTime))
+            .accessibilityValue(time(displayedTime))
 
             HStack(spacing: 0) {
-                Text(time(app.player.currentTime))
+                Text(time(displayedTime))
                     .font(.caption.monospacedDigit())
                     .foregroundStyle(.secondary)
                     .frame(width: 44, alignment: .leading)
@@ -502,7 +511,7 @@ struct MiniPlayerView: View {
                 transportButton("goforward.15", label: "Forward 15 seconds") { app.player.seek(by: 15) }
                 transportButton("forward.end.fill", label: "Next track") { _ = app.player.skip(forward: true) }
                 Spacer(minLength: 0)
-                Text("-" + time(max(app.player.duration - app.player.currentTime, 0)))
+                Text("-" + time(max(app.player.duration - displayedTime, 0)))
                     .font(.caption.monospacedDigit())
                     .foregroundStyle(.secondary)
                     .frame(width: 44, alignment: .trailing)
