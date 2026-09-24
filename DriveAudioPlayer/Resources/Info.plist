@@ -29,6 +29,8 @@
 	</array>
 	<key>CFBundleVersion</key>
 	<string>1</string>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 	<key>GOOGLE_IOS_CLIENT_ID</key>
 	<string>1026152389530-up8dfs5kkt1urgsl1d1osnih9g017see.apps.googleusercontent.com</string>
 	<key>UIBackgroundModes</key>
