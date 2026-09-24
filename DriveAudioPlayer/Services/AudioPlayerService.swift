@@ -1,6 +1,8 @@
 import AVFoundation
 import MediaPlayer
+import Network
 import Observation
+import UIKit
 
 @Observable @MainActor
 final class AudioPlayerService {
@@ -30,9 +32,19 @@ final class AudioPlayerService {
     }
 
     private var interruptionObserver: NSObjectProtocol?
+    private var lifecycleObservers: [NSObjectProtocol] = []
     private var wasPlayingBeforeInterruption = false
+    private var isInForeground = true
+    private let network = NWPathMonitor()
+    private var isOnExpensiveNetwork = false
 
-    init() { configureAudioSession(); configureRemoteCommands(); observeInterruptions() }
+    init() {
+        configureAudioSession(); configureRemoteCommands(); observeInterruptions(); observeLifecycle()
+        network.pathUpdateHandler = { [weak self] path in
+            Task { @MainActor in self?.isOnExpensiveNetwork = path.isExpensive || path.isConstrained }
+        }
+        network.start(queue: .global(qos: .utility))
+    }
     func play(file: DriveFile, playlist: [DriveFile], request: URLRequest? = nil, localURL: URL? = nil) {
         configureAudioSession()
         stop(keepCurrent: true)
@@ -81,7 +93,7 @@ final class AudioPlayerService {
         trackSelectionHandler?(playlist[next])
         return true
     }
-    func stop(keepCurrent: Bool = false) { if let timeObserver { player?.removeTimeObserver(timeObserver) }; if let endObserver { NotificationCenter.default.removeObserver(endObserver) }; player?.pause(); player = nil; isPlaying = false; if !keepCurrent { current = nil }; MPNowPlayingInfoCenter.default().nowPlayingInfo = nil }
+    func stop(keepCurrent: Bool = false) { stopProgressUpdates(); if let endObserver { NotificationCenter.default.removeObserver(endObserver) }; endObserver = nil; player?.pause(); player = nil; isPlaying = false; if !keepCurrent { current = nil }; MPNowPlayingInfoCenter.default().nowPlayingInfo = nil }
     private func configureAudioSession() {
         do {
             try AVAudioSession.sharedInstance().setCategory(.playback, mode: .default)
@@ -116,12 +128,37 @@ final class AudioPlayerService {
         }
     }
     private func installObservers(_ item: AVPlayerItem) {
-        timeObserver = player?.addPeriodicTimeObserver(forInterval: CMTime(seconds: 1, preferredTimescale: 1), queue: .main) { [weak self] time in
-            Task { @MainActor in self?.didUpdateProgress(time.seconds) }
-        }
+        if isInForeground { startProgressUpdates() }
         endObserver = NotificationCenter.default.addObserver(forName: .AVPlayerItemDidPlayToEndTime, object: item, queue: .main) { [weak self] _ in
             Task { @MainActor in self?.skip(forward: true) }
         }
+    }
+    /// The per-second progress tick only serves the on-screen UI. Dropping it in
+    /// the background lets the CPU sleep between audio buffer refills.
+    private func startProgressUpdates() {
+        guard timeObserver == nil, let player else { return }
+        timeObserver = player.addPeriodicTimeObserver(forInterval: CMTime(seconds: 1, preferredTimescale: 1), queue: .main) { [weak self] time in
+            Task { @MainActor in self?.didUpdateProgress(time.seconds) }
+        }
+    }
+    private func stopProgressUpdates() {
+        if let timeObserver { player?.removeTimeObserver(timeObserver) }
+        timeObserver = nil
+    }
+    private func didEnterForeground() {
+        isInForeground = true
+        if let seconds = player?.currentTime().seconds { didUpdateProgress(seconds) }
+        startProgressUpdates()
+    }
+    private func observeLifecycle() {
+        lifecycleObservers = [
+            NotificationCenter.default.addObserver(forName: UIApplication.didEnterBackgroundNotification, object: nil, queue: .main) { [weak self] _ in
+                Task { @MainActor in self?.isInForeground = false; self?.stopProgressUpdates() }
+            },
+            NotificationCenter.default.addObserver(forName: UIApplication.willEnterForegroundNotification, object: nil, queue: .main) { [weak self] _ in
+                Task { @MainActor in self?.didEnterForeground() }
+            }
+        ]
     }
     private func configureRemoteCommands() {
         let commands = MPRemoteCommandCenter.shared()
@@ -163,9 +200,12 @@ final class AudioPlayerService {
         }
         return .success
     }
+    /// Measuring remote tracks means opening a connection to each file, so the
+    /// playlist total is only computed eagerly on unmetered networks outside
+    /// Low Power Mode. Otherwise durations fill in as tracks are played.
     private func loadPlaylistDurations() {
         durationLoader?.cancel()
-        guard let assetProvider else { return }
+        guard let assetProvider, !isOnExpensiveNetwork, !ProcessInfo.processInfo.isLowPowerModeEnabled else { return }
         let pending = playlist.filter { trackDurations[$0.id] == nil }
         durationLoader = Task { [weak self] in
             for file in pending {
@@ -177,9 +217,13 @@ final class AudioPlayerService {
     }
     private func didUpdateProgress(_ seconds: Double) {
         currentTime = seconds.isFinite ? seconds : 0
-        let seconds = player?.currentItem?.duration.seconds ?? 0
-        duration = seconds.isFinite ? seconds : 0
+        let reported = player?.currentItem?.duration.seconds ?? 0
+        let newDuration = reported.isFinite ? reported : 0
+        guard newDuration != duration else { return }
+        duration = newDuration
         if duration > 0, let current { trackDurations[current.id] = duration }
+        // Now Playing is only rewritten on state changes; the system extrapolates
+        // elapsed time from the rate, so a per-second update just burns battery.
         updateNowPlaying()
     }
     private func toggleIfNeeded(play: Bool) { if isPlaying != play { toggle() } }
