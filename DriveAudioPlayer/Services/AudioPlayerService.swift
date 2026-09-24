@@ -36,7 +36,8 @@ final class AudioPlayerService {
     private var wasPlayingBeforeInterruption = false
     private var isInForeground = true
     private let network = NWPathMonitor()
-    private var isOnExpensiveNetwork = false
+    /// Cellular, hotspot, or Low Data Mode — avoid optional network work.
+    private(set) var isOnExpensiveNetwork = false
 
     init() {
         configureAudioSession(); configureRemoteCommands(); observeInterruptions(); observeLifecycle()

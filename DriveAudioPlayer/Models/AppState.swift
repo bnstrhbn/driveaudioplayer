@@ -9,6 +9,7 @@ final class AppState {
     let auth = GoogleAuthService()
     let drive = GoogleDriveService()
     let downloads = DownloadStore()
+    let cache = PlaybackCache()
     let favorites = FavoritesStore()
     let player = AudioPlayerService()
 
@@ -18,14 +19,18 @@ final class AppState {
         }
         player.assetProvider = { [weak self] file in
             guard let self else { throw CancellationError() }
-            if let local = downloads.localURL(for: file) { return AVURLAsset(url: local) }
+            if let local = localURL(for: file) { return AVURLAsset(url: local) }
             let request = try await drive.authorizedRequest(for: file)
             return AVURLAsset(url: request.url!, options: ["AVURLAssetHTTPHeaderFieldsKey": request.allHTTPHeaderFields ?? [:]])
         }
     }
 
+    /// Explicit downloads win over the transparent cache; either avoids the network.
+    func localURL(for file: DriveFile) -> URL? { downloads.localURL(for: file) ?? cache.localURL(for: file) }
+
     func restore() async {
         await downloads.load()
+        cache.load()
         favorites.load()
         if await auth.restoreSession() { await connectDrive() } else { phase = .signedOut }
     }
@@ -68,12 +73,29 @@ final class AppState {
 
     func play(_ file: DriveFile) async {
         do {
-            let local = downloads.localURL(for: file)
-            let request = local == nil ? try await drive.authorizedRequest(for: file) : nil
-            player.play(file: file, playlist: player.playlist, request: request, localURL: local)
-        } catch {
             // The view that initiated playback already surfaces its own failures.
             // Remote controls cannot present an alert, so leave current playback intact.
+            try await play(file, playlist: player.playlist)
+        } catch { }
+    }
+
+    func play(_ file: DriveFile, playlist: [DriveFile]) async throws {
+        let local = localURL(for: file)
+        let request = local == nil ? try await drive.authorizedRequest(for: file) : nil
+        player.play(file: file, playlist: playlist, request: request, localURL: local)
+        warmCache(around: file, in: playlist)
+    }
+
+    /// Streaming can't be captured, so caching means a second fetch of the
+    /// current track plus a prefetch of the next one. That's only worth the
+    /// radio time on unmetered networks outside Low Power Mode; on cellular the
+    /// app streams only and relies on what was cached earlier.
+    private func warmCache(around file: DriveFile, in playlist: [DriveFile]) {
+        guard !player.isOnExpensiveNetwork, !ProcessInfo.processInfo.isLowPowerModeEnabled else { return }
+        var candidates = [file]
+        if let index = playlist.firstIndex(of: file), playlist.count > 1 { candidates.append(playlist[(index + 1) % playlist.count]) }
+        for track in candidates where localURL(for: track) == nil {
+            Task { await cache.cache(track, from: drive) }
         }
     }
 }

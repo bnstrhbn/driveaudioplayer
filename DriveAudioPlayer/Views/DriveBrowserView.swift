@@ -119,6 +119,10 @@ private struct AccountMenu: View {
 
     var body: some View {
         Menu {
+            Section("Cached on Wi‑Fi while playing (up to 1 GB)") {
+                Button("Clear Cache (\(ByteCountFormatter.string(fromByteCount: app.cache.totalBytes, countStyle: .file)))", systemImage: "internaldrive") { app.cache.clear() }
+                    .disabled(app.cache.totalBytes == 0)
+            }
             Button("Sign Out", role: .destructive) { Task { await app.signOut() } }
         } label: {
             Image(systemName: "person.crop.circle")
@@ -357,7 +361,7 @@ struct FileListView: View {
             }
         }
     }
-    private func play(_ file: DriveFile) { Task { do { let local = app.downloads.localURL(for: file); let request = local == nil ? try await app.drive.authorizedRequest(for: file) : nil; app.player.play(file: file, playlist: tracks, request: request, localURL: local) } catch { self.error = error.localizedDescription } } }
+    private func play(_ file: DriveFile) { Task { do { try await app.play(file, playlist: tracks) } catch { self.error = error.localizedDescription } } }
     private func download(_ file: DriveFile) async { downloadsInProgress.insert(file.id); defer { downloadsInProgress.remove(file.id) }; do { try await app.downloads.download(file, from: app.drive) { _ in } } catch { self.error = error.localizedDescription } }
 }
 

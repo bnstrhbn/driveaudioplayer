@@ -10,6 +10,7 @@
 		02553191704F124ABC3F4EF6 /* GoogleAuthService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9C0360716C7495AC0DC542E /* GoogleAuthService.swift */; };
 		3278AAE55D81B97322965162 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = CE1A5847EC066AE9B4402F9D /* Assets.xcassets */; };
 		3281C071ABC39854DAC69F6D /* Keychain.swift in Sources */ = {isa = PBXBuildFile; fileRef = 046B3F5263412C29B9346E67 /* Keychain.swift */; };
+		38D7D77022C6AA5903BDAA4F /* PlaybackCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8FFED4475CD066DDEB099C91 /* PlaybackCache.swift */; };
 		396341047E62BF78FE95BF74 /* FavoritesStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8AC845A13B76DEC9FE4DFC5B /* FavoritesStore.swift */; };
 		4453EB475E3448D1EBD711B8 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 805C5C8A9B2FD9238A8D9C43 /* RootView.swift */; };
 		697FEEA007C68F60F64B07A6 /* DriveAudioPlayerApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 47BE2178663C8915E48703F0 /* DriveAudioPlayerApp.swift */; };
@@ -27,13 +28,14 @@
 		12686D200DE672B1F91CD78E /* AppState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppState.swift; sourceTree = "<group>"; };
 		1DBCE6D743D1B9E504EB8C0E /* DownloadStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DownloadStore.swift; sourceTree = "<group>"; };
 		2ADDFD50FBBFEEF5C0D792D4 /* DriveAudioPlayer.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = DriveAudioPlayer.entitlements; sourceTree = "<group>"; };
-		42761DD8A15F90BFBC751B01 /* DriveAudioPlayer.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = DriveAudioPlayer.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		42761DD8A15F90BFBC751B01 /* DriveAudioPlayer.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = DriveAudioPlayer.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		47BE2178663C8915E48703F0 /* DriveAudioPlayerApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DriveAudioPlayerApp.swift; sourceTree = "<group>"; };
 		7C47B0BDF4E7613F4A333363 /* GoogleDriveService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GoogleDriveService.swift; sourceTree = "<group>"; };
 		805C5C8A9B2FD9238A8D9C43 /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
 		89286A1391D2D96097C9338A /* AudioPlayerService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioPlayerService.swift; sourceTree = "<group>"; };
 		8AC845A13B76DEC9FE4DFC5B /* FavoritesStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FavoritesStore.swift; sourceTree = "<group>"; };
 		8E8420A0E32C760D4BE512DC /* DriveModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DriveModels.swift; sourceTree = "<group>"; };
+		8FFED4475CD066DDEB099C91 /* PlaybackCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlaybackCache.swift; sourceTree = "<group>"; };
 		9FAA3EC3963685116F072E6F /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		B9C0360716C7495AC0DC542E /* GoogleAuthService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GoogleAuthService.swift; sourceTree = "<group>"; };
 		CE1A5847EC066AE9B4402F9D /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
@@ -71,6 +73,7 @@
 				B9C0360716C7495AC0DC542E /* GoogleAuthService.swift */,
 				7C47B0BDF4E7613F4A333363 /* GoogleDriveService.swift */,
 				046B3F5263412C29B9346E67 /* Keychain.swift */,
+				8FFED4475CD066DDEB099C91 /* PlaybackCache.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -149,6 +152,11 @@
 			attributes = {
 				BuildIndependentTargetsInParallel = YES;
 				LastUpgradeCheck = 1430;
+				TargetAttributes = {
+					5D693D87CD30F25BE47565FD = {
+						DevelopmentTeam = WN52Z85XQU;
+					};
+				};
 			};
 			buildConfigurationList = 01BC6056CAAFD7113638FFB2 /* Build configuration list for PBXProject "DriveAudioPlayer" */;
 			developmentRegion = en;
@@ -196,6 +204,7 @@
 				02553191704F124ABC3F4EF6 /* GoogleAuthService.swift in Sources */,
 				C07FC2D72A86D5EF43729E56 /* GoogleDriveService.swift in Sources */,
 				3281C071ABC39854DAC69F6D /* Keychain.swift in Sources */,
+				38D7D77022C6AA5903BDAA4F /* PlaybackCache.swift in Sources */,
 				4453EB475E3448D1EBD711B8 /* RootView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
