@@ -14,11 +14,18 @@ final class DownloadStore {
     func load() async { try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true); guard let data = try? Data(contentsOf: indexURL) else { return }; records = (try? JSONDecoder().decode([DownloadRecord].self, from: data)) ?? [] }
     func localURL(for file: DriveFile) -> URL? { records.first(where: { $0.fileID == file.id }).map { directory.appending(path: $0.relativePath) } }
     func contains(_ file: DriveFile) -> Bool { records.contains { $0.fileID == file.id } }
+    /// True when Drive has a newer version of a downloaded file than the copy on
+    /// disk. Records without a version (pre-upgrade) are assumed current.
+    func isOutdated(_ file: DriveFile) -> Bool {
+        guard let record = records.first(where: { $0.fileID == file.id }), let saved = record.modifiedTime, let latest = file.modifiedTime else { return false }
+        return saved != latest
+    }
 
-    /// Downloads a track. A copy already in the playback cache is promoted
-    /// instead of fetched again, so the two stores never hold the same bytes.
+    /// Downloads a track (or replaces an outdated copy). A matching copy already
+    /// in the playback cache is promoted instead of fetched again, so the two
+    /// stores never hold the same bytes.
     func download(_ file: DriveFile, from drive: GoogleDriveService, promotingFrom cache: PlaybackCache? = nil) async throws {
-        guard !contains(file) else { return }
+        guard !contains(file) || isOutdated(file) else { return }
         let filename = "\(file.id)-\(file.name.replacingOccurrences(of: "/", with: "-"))"
         let destination = directory.appending(path: filename)
         try? FileManager.default.removeItem(at: destination)
@@ -31,7 +38,7 @@ final class DownloadStore {
             try FileManager.default.moveItem(at: temporaryURL, to: destination)
         }
         records.removeAll { $0.fileID == file.id }
-        records.append(DownloadRecord(fileID: file.id, fileName: file.name, relativePath: filename, completedAt: .now))
+        records.append(DownloadRecord(fileID: file.id, fileName: file.name, relativePath: filename, completedAt: .now, modifiedTime: file.modifiedTime))
         try save()
     }
 
@@ -39,7 +46,7 @@ final class DownloadStore {
     /// Runs independently of the view that started it.
     func downloadAll(_ files: [DriveFile], batchID: String, from drive: GoogleDriveService, promotingFrom cache: PlaybackCache) {
         guard batchTasks[batchID] == nil else { return }
-        let pending = files.filter { !contains($0) }
+        let pending = files.filter { !contains($0) || isOutdated($0) }
         guard !pending.isEmpty else { return }
         batches[batchID] = BatchProgress(total: pending.count)
         batchTasks[batchID] = Task { [weak self] in

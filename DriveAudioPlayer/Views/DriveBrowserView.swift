@@ -269,7 +269,9 @@ struct FileListView: View {
     @State private var confirmCellularDownload = false
     var tracks: [DriveFile] { contents.filter(\.isPlayableAudio) }
     private var downloadedTracks: [DriveFile] { tracks.filter(app.downloads.contains) }
-    private var pendingBytes: Int64 { tracks.filter { !app.downloads.contains($0) && !app.cache.contains($0) }.compactMap { Int64($0.size ?? "") }.reduce(0, +) }
+    /// Up to date on disk; outdated downloads count as needing a (re)download.
+    private var currentDownloads: [DriveFile] { downloadedTracks.filter { !app.downloads.isOutdated($0) } }
+    private var pendingBytes: Int64 { tracks.filter { !currentDownloads.contains($0) && !app.cache.contains($0) }.compactMap { Int64($0.size ?? "") }.reduce(0, +) }
 
     var body: some View {
         List {
@@ -317,7 +319,7 @@ struct FileListView: View {
                     .foregroundStyle(.secondary)
                 Button("Cancel", role: .cancel) { app.downloads.cancelBatch(batchID) }
                     .font(.footnote)
-            } else if downloadedTracks.count == tracks.count {
+            } else if currentDownloads.count == tracks.count {
                 Menu {
                     Button("Remove Downloads", systemImage: "trash", role: .destructive) { app.downloads.deleteAll(downloadedTracks) }
                 } label: {
@@ -329,7 +331,7 @@ struct FileListView: View {
                 Button {
                     if app.player.isOnExpensiveNetwork && pendingBytes > 0 { confirmCellularDownload = true } else { downloadAll() }
                 } label: {
-                    Label(downloadedTracks.isEmpty ? "Download All" : "Download Remaining", systemImage: "arrow.down.circle")
+                    Label(currentDownloads.isEmpty && downloadedTracks.isEmpty ? "Download All" : downloadedTracks.count == tracks.count ? "Update Downloads" : "Download Remaining", systemImage: "arrow.down.circle")
                         .font(.footnote.weight(.medium))
                 }
                 .confirmationDialog("Download \(ByteCountFormatter.string(fromByteCount: pendingBytes, countStyle: .file)) over cellular?", isPresented: $confirmCellularDownload, titleVisibility: .visible) {
@@ -383,14 +385,24 @@ struct FileListView: View {
                     }
                     Spacer(minLength: 8)
                     if downloadsInProgress.contains(file.id) { ProgressView() }
+                    else if app.downloads.isOutdated(file) { Image(systemName: "arrow.triangle.2.circlepath.circle.fill").foregroundStyle(.orange).accessibilityLabel("Newer version available") }
                     else if app.downloads.contains(file) { Image(systemName: "arrow.down.circle.fill").foregroundStyle(.green).accessibilityLabel("Downloaded") }
                     else if app.cache.contains(file) { Image(systemName: "internaldrive").foregroundStyle(.tertiary).accessibilityLabel("Cached for offline") }
                 }
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-                .contextMenu { if !app.downloads.contains(file) { Button(app.cache.contains(file) ? "Keep Downloaded" : "Download for Offline", systemImage: "arrow.down.circle") { Task { await download(file) } } } else { Button("Remove Download", systemImage: "trash", role: .destructive) { app.downloads.delete(file) } } }
-                .swipeActions { if !app.downloads.contains(file) { Button { Task { await download(file) } } label: { Label(app.cache.contains(file) ? "Keep" : "Download", systemImage: "arrow.down.circle") }.tint(.blue) } }
+                .contextMenu {
+                    if !app.downloads.contains(file) { Button(app.cache.contains(file) ? "Keep Downloaded" : "Download for Offline", systemImage: "arrow.down.circle") { Task { await download(file) } } }
+                    else {
+                        if app.downloads.isOutdated(file) { Button("Update Download", systemImage: "arrow.triangle.2.circlepath") { Task { await download(file) } } }
+                        Button("Remove Download", systemImage: "trash", role: .destructive) { app.downloads.delete(file) }
+                    }
+                }
+                .swipeActions {
+                    if !app.downloads.contains(file) { Button { Task { await download(file) } } label: { Label(app.cache.contains(file) ? "Keep" : "Download", systemImage: "arrow.down.circle") }.tint(.blue) }
+                    else if app.downloads.isOutdated(file) { Button { Task { await download(file) } } label: { Label("Update", systemImage: "arrow.triangle.2.circlepath") }.tint(.orange) }
+                }
         }
     }
     @ViewBuilder private func sharingInfo(_ file: DriveFile) -> some View {

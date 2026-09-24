@@ -124,5 +124,8 @@ struct DownloadRecord: Codable, Identifiable, Hashable, Sendable {
     let fileName: String
     let relativePath: String
     let completedAt: Date
+    /// Drive keeps a file's ID across uploaded versions, so the version is
+    /// tracked by `modifiedTime`. nil for records saved before this existed.
+    var modifiedTime: String? = nil
     var id: String { fileID }
 }

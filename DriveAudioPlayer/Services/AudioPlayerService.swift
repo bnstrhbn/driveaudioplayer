@@ -62,27 +62,35 @@ final class AudioPlayerService {
         isPlaying = true
         updateNowPlaying()
     }
-    func toggle() { guard let player else { return }; if isPlaying { player.pause() } else { player.play() }; isPlaying.toggle(); updateNowPlaying() }
+    func toggle() { guard let player else { return }; syncTime(); if isPlaying { player.pause() } else { player.play() }; isPlaying.toggle(); updateNowPlaying() }
+    /// The player's actual position. `currentTime` is only ticked while the UI
+    /// is visible, so anything relative (skip ±15, "previous") must use this.
+    private var livePosition: Double {
+        let seconds = player?.currentTime().seconds ?? currentTime
+        return seconds.isFinite ? seconds : currentTime
+    }
+    private func syncTime() { currentTime = livePosition }
     func seek(to time: Double) {
         let clampedTime = min(max(time, 0), duration > 0 ? duration : time)
+        // Reflect the target immediately so the UI and lock screen don't wait on
+        // (or miss, if superseded) the asynchronous completion.
+        currentTime = clampedTime
+        updateNowPlaying()
         player?.seek(to: CMTime(seconds: clampedTime, preferredTimescale: 600), toleranceBefore: .zero, toleranceAfter: .zero) { [weak self] finished in
             guard finished else { return }
-            Task { @MainActor in
-                self?.currentTime = clampedTime
-                self?.updateNowPlaying()
-            }
+            Task { @MainActor in self?.syncTime(); self?.updateNowPlaying() }
         }
     }
     func seek(by seconds: Double) {
         let limit = duration.isFinite && duration > 0 ? duration : .greatestFiniteMagnitude
-        seek(to: min(max(currentTime + seconds, 0), limit))
+        seek(to: min(max(livePosition + seconds, 0), limit))
     }
     func restart() { seek(to: 0) }
     /// Standard "previous" behaviour: restart the current track unless it has
     /// only just begun, in which case go to the previous track.
     @discardableResult
     func previous() -> Bool {
-        if currentTime > 2 { restart(); return true }
+        if livePosition > 2 { restart(); return true }
         return skip(forward: false)
     }
     /// The playlist repeats: skipping past the last track wraps to the first and
@@ -234,7 +242,7 @@ final class AudioPlayerService {
             MPMediaItemPropertyTitle: current.name,
             MPMediaItemPropertyArtist: "Google Drive",
             MPMediaItemPropertyPlaybackDuration: duration,
-            MPNowPlayingInfoPropertyElapsedPlaybackTime: currentTime,
+            MPNowPlayingInfoPropertyElapsedPlaybackTime: livePosition,
             MPNowPlayingInfoPropertyPlaybackRate: isPlaying ? 1 : 0,
             MPNowPlayingInfoPropertyDefaultPlaybackRate: 1.0
         ]

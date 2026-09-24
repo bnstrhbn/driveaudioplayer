@@ -11,6 +11,9 @@ final class PlaybackCache {
         let relativePath: String
         let bytes: Int64
         var lastPlayed: Date
+        /// Drive keeps a file's ID across versions; a changed `modifiedTime`
+        /// means the cached bytes are stale.
+        var modifiedTime: String? = nil
     }
 
     static let defaultLimit: Int64 = 1_000_000_000
@@ -31,26 +34,35 @@ final class PlaybackCache {
         save()
     }
 
-    /// The cached file for a track, if present. Marks it as recently played.
+    /// The cached file for a track, if present and current. Marks it as recently
+    /// played. A stale version is discarded so the new one streams and re-caches.
     func localURL(for file: DriveFile) -> URL? {
         guard let index = entries.firstIndex(where: { $0.fileID == file.id }) else { return nil }
         let url = directory.appending(path: entries[index].relativePath)
-        guard FileManager.default.fileExists(atPath: url.path) else { entries.remove(at: index); save(); return nil }
+        guard FileManager.default.fileExists(atPath: url.path), !isOutdated(entries[index], for: file) else {
+            try? FileManager.default.removeItem(at: url); entries.remove(at: index); save(); return nil
+        }
         entries[index].lastPlayed = .now
         save()
         return url
     }
 
-    func contains(_ file: DriveFile) -> Bool { entries.contains { $0.fileID == file.id } }
+    func contains(_ file: DriveFile) -> Bool { entries.contains { $0.fileID == file.id && !isOutdated($0, for: file) } }
+    private func isOutdated(_ entry: Entry, for file: DriveFile) -> Bool {
+        guard let saved = entry.modifiedTime, let latest = file.modifiedTime else { return false }
+        return saved != latest
+    }
 
     /// Removes the track from the cache index and hands its file to the caller
     /// (used to promote a cached track to a permanent download without refetching).
     func take(_ file: DriveFile) -> URL? {
         guard let index = entries.firstIndex(where: { $0.fileID == file.id }) else { return nil }
-        let url = directory.appending(path: entries[index].relativePath)
-        entries.remove(at: index)
+        let entry = entries.remove(at: index)
         save()
-        return FileManager.default.fileExists(atPath: url.path) ? url : nil
+        let url = directory.appending(path: entry.relativePath)
+        guard FileManager.default.fileExists(atPath: url.path) else { return nil }
+        guard !isOutdated(entry, for: file) else { try? FileManager.default.removeItem(at: url); return nil }
+        return url
     }
 
     /// Fetches the track into the cache. Concurrent requests for the same track
@@ -71,7 +83,7 @@ final class PlaybackCache {
         guard (try? FileManager.default.moveItem(at: temporaryURL, to: destination)) != nil else { return }
         let bytes = (try? FileManager.default.attributesOfItem(atPath: destination.path)[.size] as? Int64) ?? Int64(file.size ?? "") ?? 0
         entries.removeAll { $0.fileID == file.id }
-        entries.append(Entry(fileID: file.id, relativePath: filename, bytes: bytes, lastPlayed: .now))
+        entries.append(Entry(fileID: file.id, relativePath: filename, bytes: bytes, lastPlayed: .now, modifiedTime: file.modifiedTime))
         evictIfNeeded()
         save()
     }

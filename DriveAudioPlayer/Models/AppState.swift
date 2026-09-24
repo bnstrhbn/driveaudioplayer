@@ -25,8 +25,13 @@ final class AppState {
         }
     }
 
-    /// Explicit downloads win over the transparent cache; either avoids the network.
-    func localURL(for file: DriveFile) -> URL? { downloads.localURL(for: file) ?? cache.localURL(for: file) }
+    /// Explicit downloads win over the transparent cache; either avoids the
+    /// network. An outdated download is skipped so the newer version plays
+    /// (`warmCache` refreshes the download itself when on Wi-Fi).
+    func localURL(for file: DriveFile) -> URL? {
+        if !downloads.isOutdated(file), let url = downloads.localURL(for: file) { return url }
+        return cache.localURL(for: file)
+    }
 
     func restore() async {
         await downloads.load()
@@ -95,7 +100,12 @@ final class AppState {
         var candidates = [file]
         if let index = playlist.firstIndex(of: file), playlist.count > 1 { candidates.append(playlist[(index + 1) % playlist.count]) }
         for track in candidates where localURL(for: track) == nil {
-            Task { await cache.cache(track, from: drive, unless: { [downloads] in downloads.contains(track) }) }
+            if downloads.isOutdated(track) {
+                // The user asked to keep this track offline; quietly bring it up to date.
+                Task { try? await downloads.download(track, from: drive, promotingFrom: cache) }
+            } else {
+                Task { await cache.cache(track, from: drive, unless: { [downloads] in downloads.contains(track) && !downloads.isOutdated(track) }) }
+            }
         }
     }
 
