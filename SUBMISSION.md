@@ -131,15 +131,22 @@ Links used below:
 
     Contact for review questions: ben.strohbeen@gmail.com
 
-### Screenshots to capture (6.9" required; 6.5" recommended)
+### Screenshots (6.9" required; 6.5" recommended)
 
-    1. Folder view with Play Folder, track list with dates/sizes, mini player
-    2. Lock Screen with Now Playing controls
-    3. Shared with me with "shared by" lines
-    4. Folder download in progress ("3 of 10", Cancel)
-    5. Sign-in screen
-    Use a folder of real-sounding mix names; avoid other people's names/emails
-    in "Shared with me" (use the demo account).
+    Capture on an iPhone 16 Pro Max (or that simulator) at full resolution,
+    save as Marketing/raw/NN-name.png using these slots, then run
+    `python3 Scripts/make_screenshots.py Marketing/raw Marketing/screenshots`.
+    Output: Marketing/screenshots/6.9/*.png (1320x2868) and 6.5/*.png.
+
+    01-folder      Folder view: Play Folder, tracks with dates/sizes, mini player
+    02-note-here   Note Here editor open with the timestamp visible
+    03-notes-list  Notes sheet for a track (a few notes, Export button)
+    04-lock-screen Lock Screen Now Playing with the scrubber
+    05-offline     Folder download in progress ("3 of 10", Cancel)
+    06-shared      Shared with me with "shared by" lines (use the demo account)
+
+    Captions live in Scripts/make_screenshots.py (CAPTIONS). Use a folder of
+    real-sounding mix names; avoid other people's names/emails.
 
 ---
 
