@@ -15,6 +15,14 @@ struct RootView: View {
                 SignInView(sessionExpired: true)
             case .signedIn:
                 DriveBrowserView()
+                    .alert("Playback Stopped", isPresented: Binding(get: { app.player.lastError != nil }, set: { if !$0 { app.player.clearError() } })) {
+                        if let current = app.player.current {
+                            Button("Retry") { Task { await app.play(current) } }
+                        }
+                        Button("OK", role: .cancel) {}
+                    } message: {
+                        Text(app.player.lastError ?? "")
+                    }
             case .failure(let message):
                 ContentUnavailableView {
                     Label("Unable to Sign In", systemImage: "exclamationmark.triangle")

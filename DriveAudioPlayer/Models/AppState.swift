@@ -80,12 +80,13 @@ final class AppState {
         phase = .sessionExpired
     }
 
+    /// Track changes driven by the player itself (end of track, lock screen
+    /// next/previous). No view is in the loop, so failures go to the player,
+    /// which shows a paused state and keeps the message for the next time the
+    /// app is on screen.
     func play(_ file: DriveFile) async {
-        do {
-            // The view that initiated playback already surfaces its own failures.
-            // Remote controls cannot present an alert, so leave current playback intact.
-            try await play(file, playlist: player.playlist)
-        } catch { }
+        do { try await play(file, playlist: player.playlist) }
+        catch { player.fail("Couldn't play “\(file.name)”. \(error.localizedDescription)") }
     }
 
     func play(_ file: DriveFile, playlist: [DriveFile], from title: String? = nil) async throws {

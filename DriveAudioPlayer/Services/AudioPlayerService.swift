@@ -9,6 +9,7 @@ final class AudioPlayerService {
     private var player: AVPlayer?
     private var timeObserver: Any?
     private var endObserver: NSObjectProtocol?
+    private var failureObserver: NSObjectProtocol?
     private(set) var current: DriveFile?
     private(set) var playlist: [DriveFile] = []
     private(set) var isPlaying = false
@@ -18,6 +19,9 @@ final class AudioPlayerService {
     /// makes the transport controls work even when the originating folder view is
     /// no longer on screen.
     var trackSelectionHandler: ((DriveFile) -> Void)?
+    /// Most recent playback failure, for the UI to surface. Cleared when a
+    /// track starts successfully.
+    private(set) var lastError: String?
     /// Builds a playable asset for any track so playlist durations can be
     /// loaded without the originating view.
     var assetProvider: ((DriveFile) async throws -> AVURLAsset)?
@@ -60,8 +64,19 @@ final class AudioPlayerService {
         currentTime = 0
         player?.play()
         isPlaying = true
+        lastError = nil
         updateNowPlaying()
     }
+    /// Playback could not start or continue (auth, network, unreadable file).
+    /// Show a real paused state — on the lock screen too — instead of a player
+    /// that claims to be playing silence.
+    func fail(_ message: String) {
+        player?.pause()
+        isPlaying = false
+        lastError = message
+        updateNowPlaying()
+    }
+    func clearError() { lastError = nil }
     func toggle() { guard let player else { return }; syncTime(); if isPlaying { player.pause() } else { player.play() }; isPlaying.toggle(); updateNowPlaying() }
     /// The player's actual position. `currentTime` is only ticked while the UI
     /// is visible, so anything relative (skip ±15, "previous") must use this.
@@ -116,7 +131,7 @@ final class AudioPlayerService {
         trackSelectionHandler?(playlist[next])
         return true
     }
-    func stop(keepCurrent: Bool = false) { stopProgressUpdates(); if let endObserver { NotificationCenter.default.removeObserver(endObserver) }; endObserver = nil; player?.pause(); player = nil; isPlaying = false; latestSeek += 1; isSeekPending = false; if !keepCurrent { current = nil }; MPNowPlayingInfoCenter.default().nowPlayingInfo = nil }
+    func stop(keepCurrent: Bool = false) { stopProgressUpdates(); for observer in [endObserver, failureObserver].compactMap({ $0 }) { NotificationCenter.default.removeObserver(observer) }; endObserver = nil; failureObserver = nil; player?.pause(); player = nil; isPlaying = false; latestSeek += 1; isSeekPending = false; if !keepCurrent { current = nil }; MPNowPlayingInfoCenter.default().nowPlayingInfo = nil }
     private func configureAudioSession() {
         do {
             try AVAudioSession.sharedInstance().setCategory(.playback, mode: .default)
@@ -154,6 +169,10 @@ final class AudioPlayerService {
         if isInForeground { startProgressUpdates() }
         endObserver = NotificationCenter.default.addObserver(forName: .AVPlayerItemDidPlayToEndTime, object: item, queue: .main) { [weak self] _ in
             Task { @MainActor in self?.skip(forward: true) }
+        }
+        failureObserver = NotificationCenter.default.addObserver(forName: .AVPlayerItemFailedToPlayToEndTime, object: item, queue: .main) { [weak self] notification in
+            let error = notification.userInfo?[AVPlayerItemFailedToPlayToEndTimeErrorKey] as? Error
+            Task { @MainActor in self?.fail(error?.localizedDescription ?? "Playback stopped. Check your connection and try again.") }
         }
     }
     /// The per-second progress tick only serves the on-screen UI. Dropping it in
