@@ -65,7 +65,7 @@ final class AudioPlayerService {
     func toggle() { guard let player else { return }; syncTime(); if isPlaying { player.pause() } else { player.play() }; isPlaying.toggle(); updateNowPlaying() }
     /// The player's actual position. `currentTime` is only ticked while the UI
     /// is visible, so anything relative (skip ±15, "previous") must use this.
-    private var livePosition: Double {
+    var livePosition: Double {
         // While a seek is in flight the player still reports the old position;
         // the requested target is the truth until it lands.
         if isSeekPending { return currentTime }

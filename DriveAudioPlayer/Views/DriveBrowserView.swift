@@ -65,6 +65,7 @@ private struct LocationView: View {
             empty: (location.emptyTitle, location.symbolName, location.emptyMessage),
             refresh: load,
             batchID: "location-\(location.rawValue)",
+            title: location.title,
             showsSharingInfo: location == .sharedWithMe
         )
         .navigationTitle(location.title)
@@ -190,7 +191,8 @@ struct FolderView: View {
             isLoading: isLoading,
             empty: ("Empty Folder", "folder", "No audio files or folders here."),
             refresh: load,
-            batchID: folder.contentID
+            batchID: folder.contentID,
+            title: folder.name
         )
         .navigationTitle(folder.name).navigationBarTitleDisplayMode(.inline)
         .locationMenu(current: nil, path: $path)
@@ -262,11 +264,15 @@ struct FileListView: View {
     let refresh: () async -> Void
     /// Identifies this listing's folder-download batch (folder or location ID).
     let batchID: String
+    /// Folder or location name, recorded on notes and used as the export heading.
+    let title: String
     /// Show who shared each item and when (Shared with me).
     var showsSharingInfo = false
+    private var noteCount: Int { tracks.reduce(0) { $0 + app.notes.count(for: $1) } }
     @State private var error: String?
     @State private var downloadsInProgress = Set<String>()
     @State private var confirmCellularDownload = false
+    @State private var notesFor: DriveFile?
     var tracks: [DriveFile] { contents.filter(\.isPlayableAudio) }
     private var downloadedTracks: [DriveFile] { tracks.filter(app.downloads.contains) }
     /// Up to date on disk; outdated downloads count as needing a (re)download.
@@ -288,6 +294,19 @@ struct FileListView: View {
                     folderDownloadRow
                         .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 8, trailing: 16))
                         .listRowSeparator(.hidden)
+                    if noteCount > 0 {
+                        HStack {
+                            Label("\(noteCount) note\(noteCount == 1 ? "" : "s") in this folder", systemImage: "note.text")
+                                .font(.footnote)
+                                .foregroundStyle(.secondary)
+                            Spacer()
+                            NotesExportMenu(text: app.notes.export(tracks: tracks, title: title), subject: "Notes — \(title)")
+                                .font(.footnote.weight(.medium))
+                        }
+                        .buttonStyle(.borderless)
+                        .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 8, trailing: 16))
+                        .listRowSeparator(.hidden)
+                    }
                 }
             }
             Section { ForEach(contents) { file in row(file) } }
@@ -302,6 +321,7 @@ struct FileListView: View {
             }
         }
         .alert("Drive Audio", isPresented: Binding(get: { error != nil }, set: { if !$0 { error = nil } })) { Button("OK") {} } message: { Text(error ?? "") }
+        .sheet(item: $notesFor) { file in TrackNotesSheet(file: file) }
     }
     /// Track count plus the folder-level offline control: download all,
     /// live progress with cancel, or remove when everything is downloaded.
@@ -384,6 +404,13 @@ struct FileListView: View {
                         sharingInfo(file)
                     }
                     Spacer(minLength: 8)
+                    if case let count = app.notes.count(for: file), count > 0 {
+                        Label("\(count)", systemImage: "note.text")
+                            .font(.caption.monospacedDigit())
+                            .labelStyle(.titleAndIcon)
+                            .foregroundStyle(.secondary)
+                            .accessibilityLabel("\(count) notes")
+                    }
                     if downloadsInProgress.contains(file.id) { ProgressView() }
                     else if app.downloads.isOutdated(file) { Image(systemName: "arrow.triangle.2.circlepath.circle.fill").foregroundStyle(.orange).accessibilityLabel("Newer version available") }
                     else if app.downloads.contains(file) { Image(systemName: "arrow.down.circle.fill").foregroundStyle(.green).accessibilityLabel("Downloaded") }
@@ -393,6 +420,7 @@ struct FileListView: View {
             }
             .buttonStyle(.plain)
                 .contextMenu {
+                    if app.notes.count(for: file) > 0 { Button("View Notes", systemImage: "note.text") { notesFor = file } }
                     if !app.downloads.contains(file) { Button(app.cache.contains(file) ? "Keep Downloaded" : "Download for Offline", systemImage: "arrow.down.circle") { Task { await download(file) } } }
                     else {
                         if app.downloads.isOutdated(file) { Button("Update Download", systemImage: "arrow.triangle.2.circlepath") { Task { await download(file) } } }
@@ -425,7 +453,7 @@ struct FileListView: View {
             }
         }
     }
-    private func play(_ file: DriveFile) { Task { do { try await app.play(file, playlist: tracks) } catch { self.error = error.localizedDescription } } }
+    private func play(_ file: DriveFile) { Task { do { try await app.play(file, playlist: tracks, from: title) } catch { self.error = error.localizedDescription } } }
     private func download(_ file: DriveFile) async { downloadsInProgress.insert(file.id); defer { downloadsInProgress.remove(file.id) }; do { try await app.download(file) } catch { self.error = error.localizedDescription } }
 }
 
@@ -433,6 +461,18 @@ struct MiniPlayerView: View {
     @Environment(AppState.self) private var app
     @State private var scrubPosition = 0.0
     @State private var isScrubbing = false
+    @State private var noteDraft: NoteDraft?
+    @State private var showingNotes = false
+    @State private var resumeAfterNote = false
+
+    /// Identifiable payload for the note editor: the exact position captured
+    /// at the moment the user tapped Note, after pausing.
+    private struct NoteDraft: Identifiable { let id = UUID(); let file: DriveFile; let timestamp: Double }
+    private var noteCount: Int { app.player.current.map(app.notes.count) ?? 0 }
+    private var noteMarkers: [Double] {
+        guard let current = app.player.current, app.player.duration > 0 else { return [] }
+        return app.notes.notes(for: current).map { min(max($0.timestamp / app.player.duration, 0), 1) }
+    }
 
     private var progress: Double {
         guard app.player.duration > 0 else { return 0 }
@@ -474,6 +514,16 @@ struct MiniPlayerView: View {
                         .fixedSize()
                         .accessibilityLabel(playlistTotal.map { "Playlist total \($0)" } ?? "")
                 }
+                Button { showingNotes = true } label: {
+                    Label("\(noteCount)", systemImage: noteCount > 0 ? "note.text" : "note")
+                        .font(.caption.monospacedDigit())
+                        .labelStyle(.titleAndIcon)
+                        .foregroundStyle(noteCount > 0 ? AnyShapeStyle(.tint) : AnyShapeStyle(.secondary))
+                        .frame(minWidth: 44, minHeight: 32)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("\(noteCount) notes on this track")
             }
 
             // Fixed 0...1 range: SwiftUI's Slider doesn't reliably track a value
@@ -498,6 +548,18 @@ struct MiniPlayerView: View {
             .disabled(app.player.duration <= 0)
             .accessibilityLabel("Playback position")
             .accessibilityValue(time(displayedTime))
+            .overlay(alignment: .top) {
+                // Note markers along the track (drawn over the slider's inset).
+                GeometryReader { geo in
+                    ForEach(Array(noteMarkers.enumerated()), id: \.offset) { _, fraction in
+                        Capsule()
+                            .fill(.tint)
+                            .frame(width: 3, height: 10)
+                            .position(x: 14 + fraction * (geo.size.width - 28), y: geo.size.height / 2)
+                    }
+                }
+                .allowsHitTesting(false)
+            }
 
             HStack(spacing: 0) {
                 Text(time(displayedTime))
@@ -516,13 +578,36 @@ struct MiniPlayerView: View {
                     .foregroundStyle(.secondary)
                     .frame(width: 44, alignment: .trailing)
             }
+
+            Button(action: beginNote) {
+                Label("Note Here", systemImage: "plus.bubble")
+                    .font(.subheadline.weight(.semibold))
+                    .frame(maxWidth: .infinity, minHeight: 36)
+            }
+            .buttonStyle(.bordered)
+            .disabled(app.player.current == nil)
+            .accessibilityHint("Pauses playback and opens a note at the current time")
         }
         .padding(.horizontal, 16)
         .padding(.top, 8)
-        .padding(.bottom, 4)
+        .padding(.bottom, 8)
         .background(.bar)
         .overlay(alignment: .top) { Divider() }
         .onChange(of: app.player.current?.id) { _, _ in scrubPosition = 0; isScrubbing = false }
+        .sheet(item: $noteDraft, onDismiss: endNote) { draft in NoteEditorSheet(file: draft.file, timestamp: draft.timestamp) }
+        .sheet(isPresented: $showingNotes) { if let current = app.player.current { TrackNotesSheet(file: current) } }
+    }
+
+    /// Pause first so the captured time is exactly what the user just heard.
+    private func beginNote() {
+        guard let current = app.player.current else { return }
+        resumeAfterNote = app.player.isPlaying
+        if app.player.isPlaying { app.player.toggle() }
+        noteDraft = NoteDraft(file: current, timestamp: app.player.livePosition)
+    }
+    private func endNote() {
+        if resumeAfterNote, !app.player.isPlaying { app.player.toggle() }
+        resumeAfterNote = false
     }
 
     private func transportButton(_ symbol: String, label: String, size: Font = .title3, action: @escaping () -> Void) -> some View {

@@ -119,6 +119,27 @@ struct DriveRoot: Identifiable, Hashable, Sendable {
     let driveId: String?
 }
 
+/// A timestamped annotation on a track, stored on device only.
+struct TrackNote: Codable, Identifiable, Hashable, Sendable {
+    var id = UUID()
+    let fileID: String
+    var fileName: String
+    /// Where the track was playing from when the note was taken, for exports.
+    var folderName: String?
+    /// Seconds into the track.
+    var timestamp: Double
+    var text: String
+    var createdAt = Date()
+    var modifiedAt = Date()
+
+    var timestampLabel: String { TrackNote.format(timestamp) }
+    static func format(_ seconds: Double) -> String {
+        let total = max(Int(seconds.rounded()), 0)
+        let (h, m, s) = (total / 3600, total / 60 % 60, total % 60)
+        return h > 0 ? String(format: "%d:%02d:%02d", h, m, s) : String(format: "%d:%02d", m, s)
+    }
+}
+
 struct DownloadRecord: Codable, Identifiable, Hashable, Sendable {
     let fileID: String
     let fileName: String

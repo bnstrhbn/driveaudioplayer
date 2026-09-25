@@ -8,6 +8,8 @@
 
 /* Begin PBXBuildFile section */
 		02553191704F124ABC3F4EF6 /* GoogleAuthService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9C0360716C7495AC0DC542E /* GoogleAuthService.swift */; };
+		10814ADAF3C7CC9128ECA9F2 /* NotesStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B866822ECFA5E3875109BE8 /* NotesStore.swift */; };
+		131DCB0611F25739455FAE1C /* NotesViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1628A47122DF3BA57FAB24F4 /* NotesViews.swift */; };
 		3278AAE55D81B97322965162 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = CE1A5847EC066AE9B4402F9D /* Assets.xcassets */; };
 		3281C071ABC39854DAC69F6D /* Keychain.swift in Sources */ = {isa = PBXBuildFile; fileRef = 046B3F5263412C29B9346E67 /* Keychain.swift */; };
 		38D7D77022C6AA5903BDAA4F /* PlaybackCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8FFED4475CD066DDEB099C91 /* PlaybackCache.swift */; };
@@ -27,10 +29,12 @@
 /* Begin PBXFileReference section */
 		046B3F5263412C29B9346E67 /* Keychain.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Keychain.swift; sourceTree = "<group>"; };
 		12686D200DE672B1F91CD78E /* AppState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppState.swift; sourceTree = "<group>"; };
+		1628A47122DF3BA57FAB24F4 /* NotesViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotesViews.swift; sourceTree = "<group>"; };
 		1DBCE6D743D1B9E504EB8C0E /* DownloadStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DownloadStore.swift; sourceTree = "<group>"; };
 		2ADDFD50FBBFEEF5C0D792D4 /* DriveAudioPlayer.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = DriveAudioPlayer.entitlements; sourceTree = "<group>"; };
 		42761DD8A15F90BFBC751B01 /* DriveAudioPlayer.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = DriveAudioPlayer.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		47BE2178663C8915E48703F0 /* DriveAudioPlayerApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DriveAudioPlayerApp.swift; sourceTree = "<group>"; };
+		6B866822ECFA5E3875109BE8 /* NotesStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotesStore.swift; sourceTree = "<group>"; };
 		7C47B0BDF4E7613F4A333363 /* GoogleDriveService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GoogleDriveService.swift; sourceTree = "<group>"; };
 		805C5C8A9B2FD9238A8D9C43 /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
 		89286A1391D2D96097C9338A /* AudioPlayerService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioPlayerService.swift; sourceTree = "<group>"; };
@@ -50,6 +54,7 @@
 			isa = PBXGroup;
 			children = (
 				D72F961A21E9B8CFFD3F4B8E /* DriveBrowserView.swift */,
+				1628A47122DF3BA57FAB24F4 /* NotesViews.swift */,
 				805C5C8A9B2FD9238A8D9C43 /* RootView.swift */,
 			);
 			path = Views;
@@ -76,6 +81,7 @@
 				B9C0360716C7495AC0DC542E /* GoogleAuthService.swift */,
 				7C47B0BDF4E7613F4A333363 /* GoogleDriveService.swift */,
 				046B3F5263412C29B9346E67 /* Keychain.swift */,
+				6B866822ECFA5E3875109BE8 /* NotesStore.swift */,
 				8FFED4475CD066DDEB099C91 /* PlaybackCache.swift */,
 			);
 			path = Services;
@@ -208,6 +214,8 @@
 				02553191704F124ABC3F4EF6 /* GoogleAuthService.swift in Sources */,
 				C07FC2D72A86D5EF43729E56 /* GoogleDriveService.swift in Sources */,
 				3281C071ABC39854DAC69F6D /* Keychain.swift in Sources */,
+				10814ADAF3C7CC9128ECA9F2 /* NotesStore.swift in Sources */,
+				131DCB0611F25739455FAE1C /* NotesViews.swift in Sources */,
 				38D7D77022C6AA5903BDAA4F /* PlaybackCache.swift in Sources */,
 				4453EB475E3448D1EBD711B8 /* RootView.swift in Sources */,
 			);

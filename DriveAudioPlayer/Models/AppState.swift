@@ -11,7 +11,10 @@ final class AppState {
     let downloads = DownloadStore()
     let cache = PlaybackCache()
     let favorites = FavoritesStore()
+    let notes = NotesStore()
     let player = AudioPlayerService()
+    /// Name of the folder/location the current playlist was started from.
+    private(set) var playlistTitle: String?
 
     init() {
         player.trackSelectionHandler = { [weak self] file in
@@ -37,6 +40,7 @@ final class AppState {
         await downloads.load()
         cache.load()
         favorites.load()
+        notes.load()
         if await auth.restoreSession() { await connectDrive() } else { phase = .signedOut }
     }
 
@@ -84,7 +88,8 @@ final class AppState {
         } catch { }
     }
 
-    func play(_ file: DriveFile, playlist: [DriveFile]) async throws {
+    func play(_ file: DriveFile, playlist: [DriveFile], from title: String? = nil) async throws {
+        if let title { playlistTitle = title }
         let local = localURL(for: file)
         let request = local == nil ? try await drive.authorizedRequest(for: file) : nil
         player.play(file: file, playlist: playlist, request: request, localURL: local)
