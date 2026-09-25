@@ -22,6 +22,8 @@ CAPTIONS = {
     "05": ("Take it offline", "Download a folder, or let Wi‑Fi caching do it for you"),
     "06": ("Shared with you,\nnewest first", "See who shared each track and when"),
 }
+# Slots whose important UI sits at the bottom of the screen (sheets, lock screen widget).
+FIT_WHOLE_PHONE = {"03", "04"}
 SIZES = {"6.9": (1320, 2868), "6.5": (1290, 2796)}
 PALETTE = [(96, 104, 190), (64, 160, 162), (240, 132, 116), (236, 190, 92)]
 BG = (16, 20, 28)
@@ -115,13 +117,19 @@ def draw_text(canvas, headline, subhead, width):
     return y
 
 
-def compose(shot, headline, subhead, size, seed):
+def compose(shot, headline, subhead, size, seed, fit=False):
+    """`fit` keeps the whole phone on-canvas (for shots whose key content is at
+    the bottom); otherwise the phone bleeds off the bottom edge for a bigger UI."""
     w, h = size
     canvas = background(size, seed).convert("RGBA")
     text_bottom = draw_text(canvas, headline, subhead, w)
-    frame = frame_screenshot(shot, int(w * 0.84))
-    x = (w - frame.width) // 2
     y = max(text_bottom + int(w * 0.06), int(h * 0.30))
+    width = int(w * 0.84)
+    if fit:
+        available = h - y - int(w * 0.06)
+        width = min(width, int(available * shot.width / shot.height * 0.96))
+    frame = frame_screenshot(shot, width)
+    x = (w - frame.width) // 2
     shadow = Image.new("RGBA", (frame.width + 160, frame.height + 160), (0, 0, 0, 0))
     ImageDraw.Draw(shadow).rounded_rectangle((80, 110, frame.width + 80, frame.height + 80), radius=int(frame.width * 0.15), fill=(0, 0, 0, 170))
     shadow = shadow.filter(ImageFilter.GaussianBlur(45))
@@ -140,7 +148,7 @@ def main(raw_dir, out_dir):
         for i, path in enumerate(raw):
             key = path.stem[:2]
             headline, subhead = CAPTIONS.get(key, (path.stem.replace("-", " ").title(), ""))
-            image = compose(Image.open(path), headline, subhead, size, i)
+            image = compose(Image.open(path), headline, subhead, size, i, fit=key in FIT_WHOLE_PHONE)
             image.save(target / f"{path.stem}.png", optimize=True)
             print(f"{label}: {path.name} -> {headline.replace(chr(10), ' ')}")
 
