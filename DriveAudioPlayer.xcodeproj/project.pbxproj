@@ -15,6 +15,7 @@
 		4453EB475E3448D1EBD711B8 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 805C5C8A9B2FD9238A8D9C43 /* RootView.swift */; };
 		697FEEA007C68F60F64B07A6 /* DriveAudioPlayerApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 47BE2178663C8915E48703F0 /* DriveAudioPlayerApp.swift */; };
 		6FD6F4B3C00961A44CFA84FB /* DriveBrowserView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D72F961A21E9B8CFFD3F4B8E /* DriveBrowserView.swift */; };
+		761FC0DA0DF6A2B5D1C97761 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 905479060F56E3152E2EF14A /* PrivacyInfo.xcprivacy */; };
 		933A34CFA7825A7CDEFDEBF5 /* AppState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 12686D200DE672B1F91CD78E /* AppState.swift */; };
 		C07FC2D72A86D5EF43729E56 /* GoogleDriveService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C47B0BDF4E7613F4A333363 /* GoogleDriveService.swift */; };
 		C66128D20F1D955812A9E371 /* AudioPlayerService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 89286A1391D2D96097C9338A /* AudioPlayerService.swift */; };
@@ -36,6 +37,7 @@
 		8AC845A13B76DEC9FE4DFC5B /* FavoritesStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FavoritesStore.swift; sourceTree = "<group>"; };
 		8E8420A0E32C760D4BE512DC /* DriveModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DriveModels.swift; sourceTree = "<group>"; };
 		8FFED4475CD066DDEB099C91 /* PlaybackCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlaybackCache.swift; sourceTree = "<group>"; };
+		905479060F56E3152E2EF14A /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		9FAA3EC3963685116F072E6F /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		B9C0360716C7495AC0DC542E /* GoogleAuthService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GoogleAuthService.swift; sourceTree = "<group>"; };
 		CE1A5847EC066AE9B4402F9D /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
@@ -60,6 +62,7 @@
 				2ADDFD50FBBFEEF5C0D792D4 /* DriveAudioPlayer.entitlements */,
 				D67C23F67DF119205E4030E7 /* GoogleService-Info.example.plist */,
 				9FAA3EC3963685116F072E6F /* Info.plist */,
+				905479060F56E3152E2EF14A /* PrivacyInfo.xcprivacy */,
 			);
 			path = Resources;
 			sourceTree = "<group>";
@@ -184,6 +187,7 @@
 			files = (
 				3278AAE55D81B97322965162 /* Assets.xcassets in Resources */,
 				FDE3C1396C2BDF3D3E3287D9 /* GoogleService-Info.example.plist in Resources */,
+				761FC0DA0DF6A2B5D1C97761 /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -218,6 +222,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = DriveAudioPlayer/Resources/DriveAudioPlayer.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = WN52Z85XQU;
 				GENERATE_INFOPLIST_FILE = NO;
 				GOOGLE_IOS_CLIENT_ID = YOUR_CLIENT_ID.apps.googleusercontent.com;
@@ -227,6 +232,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
+				MARKETING_VERSION = 1.0;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = 1;
 			};
@@ -359,6 +365,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = DriveAudioPlayer/Resources/DriveAudioPlayer.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = WN52Z85XQU;
 				GENERATE_INFOPLIST_FILE = NO;
 				GOOGLE_IOS_CLIENT_ID = YOUR_CLIENT_ID.apps.googleusercontent.com;
@@ -368,6 +375,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
+				MARKETING_VERSION = 1.0;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = 1;
 			};
