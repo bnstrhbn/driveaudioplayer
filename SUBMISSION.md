@@ -1,13 +1,13 @@
 # Submission kit
 
 Copy to paste into App Store Connect and the Google Cloud Console. Keep this
-in sync with the site at https://bnstrhbn.github.io/driveaudio-site/.
+in sync with the site at https://www.bstroceramics.com/apps/drive-audio.
 
 Links used below:
 
-- Homepage / support: https://bnstrhbn.github.io/driveaudio-site/
-- Privacy policy: https://bnstrhbn.github.io/driveaudio-site/privacy-policy
-- Terms: https://bnstrhbn.github.io/driveaudio-site/terms
+- Homepage / support: https://www.bstroceramics.com/apps/drive-audio
+- Privacy policy: https://www.bstroceramics.com/apps/drive-audio/privacy
+- Terms: https://www.bstroceramics.com/apps/drive-audio/terms
 - Support email: ben.strohbeen@gmail.com
 
 ---
@@ -65,15 +65,15 @@ Links used below:
 
 ### Support URL
 
-    https://bnstrhbn.github.io/driveaudio-site/
+    https://www.bstroceramics.com/apps/drive-audio
 
 ### Marketing URL (optional)
 
-    https://bnstrhbn.github.io/driveaudio-site/
+    https://www.bstroceramics.com/apps/drive-audio
 
 ### Privacy Policy URL
 
-    https://bnstrhbn.github.io/driveaudio-site/privacy-policy
+    https://www.bstroceramics.com/apps/drive-audio/privacy
 
 ### Category
 
@@ -151,15 +151,15 @@ Links used below:
     User support email:  ben.strohbeen@gmail.com
     App logo:            DriveAudioPlayer/Resources/Assets.xcassets/AppIcon.appiconset/Icon-1024.png
                          (resize to 120×120 PNG for upload)
-    App home page:       https://bnstrhbn.github.io/driveaudio-site/
-    Privacy policy:      https://bnstrhbn.github.io/driveaudio-site/privacy-policy
-    Terms of service:    https://bnstrhbn.github.io/driveaudio-site/terms
-    Authorized domain:   bnstrhbn.github.io
+    App home page:       https://www.bstroceramics.com/apps/drive-audio
+    Privacy policy:      https://www.bstroceramics.com/apps/drive-audio/privacy
+    Terms of service:    https://www.bstroceramics.com/apps/drive-audio/terms
+    Authorized domain:   bstroceramics.com
     Developer contact:   ben.strohbeen@gmail.com
 
-Domain verification: bnstrhbn.github.io must be verified in Google Search
-Console (HTML-file or meta-tag method works with GitHub Pages — add the
-file/tag to the driveaudio-site repo root/_config).
+Domain verification: bstroceramics.com must be verified in Google Search
+Console (DNS TXT record at your registrar is simplest for an apex domain; you
+may already have it verified if Search Console is set up for the shop).
 
 ### Scopes
 
@@ -226,7 +226,7 @@ plus the demo video must be redone.
 
     [ ] OAuth consent screen published (In production) and verification
         submitted with the justification + video above
-    [ ] bnstrhbn.github.io verified in Search Console
+    [ ] bstroceramics.com verified in Search Console
     [ ] App Store Connect record created for com.benstrohbeen.DriveAudioPlayer
     [ ] Demo Google account created with sample audio + a shared folder;
         credentials pasted into App Review notes
