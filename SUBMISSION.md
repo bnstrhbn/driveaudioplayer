@@ -203,22 +203,100 @@ plus the demo video must be redone.
     sandbox and deleted when the app is removed. Access tokens are stored in
     the iOS Keychain. The app never writes to Drive.
 
-### Demo video script (YouTube, unlisted; 1–3 minutes)
+### Demo video v2 (YouTube, unlisted; 4–6 minutes)
 
-    0:00  Show the app icon and launch. "This is Drive Audio, an iPhone player
-          for audio stored in Google Drive."
-    0:10  Tap Continue with Google; show the Google consent screen with the
-          drive.readonly permission text clearly visible; approve.
-    0:30  Browse My Drive → open a folder → point out file names, sizes and
-          dates come from Drive metadata.
-    0:45  Tap Play Folder; audio plays. Show the mini player.
-    1:00  Tap the title → Shared with me; point out "shared by" and date.
-    1:15  Swipe → Download a track; show the downloaded indicator. Turn on
-          Airplane Mode; play it. "Files are stored only on the device."
-    1:35  Open Google Drive in a browser side-by-side to show nothing was
-          modified: no new files, no changed sharing.
-    1:50  Show Google Account → Security → Third-party access → Drive Audio,
-          and the read-only permission listed. End.
+Google rejected v1 as not showing "the maximum extent of the user-facing
+features using the scope" and not showing the consent screen fully
+expanded. v2 must prove, on camera, every capability that needs
+drive.readonly and why drive.file / drive.metadata.readonly cannot do it.
+
+Before recording:
+
+    - Cloud Console → OAuth consent screen → Scopes: confirm the ONLY scope
+      listed is https://www.googleapis.com/auth/drive.readonly. Remove any
+      others (e.g. openid/email/profile if present) — "scope matching" means
+      the console list must equal what the app requests, and the app requests
+      exactly drive.readonly.
+    - Sign the demo account out of the app first so the consent screen appears.
+    - Demo account Drive should contain: My Drive → "Spring mixes" (5+ tracks,
+      one subfolder, one shortcut to an audio file); a folder in "Shared with
+      me" owned by ANOTHER account; a Shared drive with audio; one starred
+      folder; one empty folder (to show it's hidden).
+    - Record with iPhone screen recording, then narrate (or add captions).
+      Speak the scope name aloud when it's on screen.
+
+Shot list:
+
+    0:00  Launch. "Drive Audio is an iPhone player for audio the user already
+          keeps in Google Drive. It requests one scope, drive.readonly. This
+          video shows every feature that uses it."
+
+    0:15  CONSENT SCREEN. Tap Continue with Google, pick the demo account.
+          On the permissions screen tap "Show all services"/"See all" if
+          present, so the full text "See and download all your Google Drive
+          files" is on screen and readable. Pause 3 seconds. Say: "The app
+          requests only drive.readonly. There is no write, share or delete
+          permission." Tap Continue.
+
+    0:45  MY DRIVE LISTING. Land in My Drive. "This list is Drive's
+          files.list, filtered to audio and folders. The empty folder
+          'Old sessions' is hidden because the app checks every folder's
+          subtree for audio — that requires listing files across the whole
+          Drive, which drive.file cannot do because the user has never
+          'opened' these files through this app."
+
+    1:15  METADATA. Open "Spring mixes". Point to name, size, modified date
+          on each row. "Sizes and dates are file metadata from the same
+          listing. Newest first."
+
+    1:30  STREAMING. Tap a track — audio plays. Show the mini player time
+          advancing. "Playback streams the file content with files.get
+          alt=media. drive.metadata.readonly does not allow this."
+
+    1:50  FOLDER PLAYLIST + LOCK SCREEN. Tap Play Folder. Lock the phone,
+          show Now Playing with the track name, scrub, unlock.
+
+    2:10  SHORTCUT. Tap the shortcut item (arrow badge in Drive). It plays.
+          "Shortcuts are separate files; the app reads shortcutDetails to
+          find the target and streams that. This also needs read access to
+          a file the user never opened in-app."
+
+    2:30  SHARED WITH ME. Tap the title → Shared with me. Open the folder
+          owned by the other account; show "Shared by <name> · <date>" on
+          rows; play a track. "This folder belongs to another user. The app
+          reads sharingUser and sharedWithMeTime and streams their file.
+          drive.file cannot see files shared by others unless opened through
+          a Google Picker, which is not available natively on iOS and would
+          not allow browsing a shared folder as a playlist."
+
+    3:05  SHARED DRIVES + STARRED. Title → Shared drives, open one, play a
+          track. Title → Starred, show starred folder. "Same read-only
+          listing across every corpus the user can access."
+
+    3:30  OFFLINE. Swipe a track → Download. Then tap Download All. Show
+          progress. Enable Airplane Mode; play a downloaded track. "Content
+          is downloaded with the same read-only endpoint and stored only in
+          the app sandbox."
+
+    3:55  NOTES (no Drive write). Tap Note Here, type a note, save. "Notes
+          are stored on the device only. The app has no write scope and
+          never modifies Drive."
+
+    4:15  SOURCE ACCOUNT UNCHANGED. Open drive.google.com for the demo
+          account in a browser (or the Drive app), show "Spring mixes":
+          same files, no new files, no changed sharing, Activity panel
+          shows no edits by Drive Audio. "Read-only: nothing changed."
+
+    4:45  GOOGLE ACCOUNT PERMISSIONS. myaccount.google.com → Security →
+          Third-party apps → Drive Audio. Show the single permission listed.
+          Tap Remove access. Return to the app; it shows the "signed out"
+          screen. "Revoking access ends the session immediately."
+
+    5:10  Close on the app icon. "One scope, read-only, used only for
+          listing and playing the user's own and shared audio."
+
+Upload unlisted; paste the link in the verification form AND in the email
+reply. Reply text is in "Review round 1 responses" below.
 
 ### Publishing status
 
@@ -226,6 +304,175 @@ plus the demo video must be redone.
     refresh tokens expire after 7 days and only listed test users can sign in.
     Publishing before verification completes is allowed; users see an
     "unverified app" interstitial until the review is approved.
+
+---
+
+## Review round 1 responses
+
+### Google — reply to the verification email
+
+Reply in the same thread after (1) the privacy policy is live with the
+"How your data is protected" section and (2) the v2 video is uploaded and
+its link is updated in Cloud Console → OAuth consent screen → verification.
+
+    Hello,
+
+    Both items have been addressed.
+
+    1. Privacy policy — data protection mechanisms
+    The privacy policy at
+    https://www.bstroceramics.com/apps/drive-audio/privacy
+    now includes a section "How your data is protected" describing, for all
+    Google user data handled by the app: encryption in transit (HTTPS/TLS to
+    Google only), encryption at rest (OAuth tokens in the iOS Keychain,
+    device-only, Secure Enclave-backed; downloaded/cached files in the iOS
+    Data Protection-encrypted app sandbox), OS-level isolation, the absence of
+    any server-side copy (the app has no backend), least-privilege scope use,
+    retention limits and deletion (cache eviction, sign-out erasing tokens,
+    app deletion removing all data, Google-side revocation), human access
+    (none), and incident handling. The Limited Use disclosure remains in the
+    "Google account and Drive access" section.
+
+    2. Demonstration video
+    A new video is available at: <YOUTUBE_URL>
+    It shows the OAuth consent screen with the single requested scope
+    (https://www.googleapis.com/auth/drive.readonly) fully expanded and
+    readable, followed by the full extent of the features that use it:
+    listing My Drive, folders shared by other users, Shared drives and
+    Starred items; hiding folders that contain no audio (which requires
+    listing across the user's Drive); displaying file metadata (name, size,
+    modified time, sharing user and time); resolving Drive shortcuts to
+    their targets; streaming file content for playback; and downloading
+    files for offline playback. The video then shows the source Google
+    account unchanged (no files created, modified or shared) and access
+    being revoked from Google Account permissions.
+
+    Why narrower scopes are insufficient (also shown in the video):
+    - drive.file grants access only to files created by the app or opened
+      through a Google Picker. The app's core purpose is browsing and playing
+      audio that already exists in the user's Drive and in folders shared by
+      collaborators, as folder playlists. The Google Picker is a web
+      component not available natively on iOS, and would not permit browsing
+      a folder's contents or scanning a Drive for folders containing audio.
+    - drive.metadata.readonly does not permit downloading file content, so
+      it cannot stream or download audio.
+
+    Scope configuration: the app requests exactly one scope,
+    https://www.googleapis.com/auth/drive.readonly, and the Cloud Console
+    scope list for project driveaudioplayer-509318 contains only that scope.
+    The app is in production status; no additional scopes are deployed.
+
+    Thank you,
+    Ben Strohbeen
+
+### Apple — reply in App Store Connect (and paste into App Review Notes)
+
+Record the screen recording first (script below), upload it to App Store
+Connect via the attachment option in the reply, or host it unlisted and
+link it. Then send:
+
+    Thank you for the review. Responses to each item:
+
+    1. SCREEN RECORDING
+    Attached / available at: <RECORDING_URL>. Recorded on an iPhone running
+    the current iOS release. It begins at app launch and shows: Google sign-in
+    (the app has no account system of its own; see note below), browsing
+    Google Drive folders, playing a folder as a playlist, Lock Screen
+    controls, taking a timestamped note and exporting notes as text,
+    downloading a folder for offline playback with Airplane Mode enabled, and
+    Sign Out.
+
+    Account registration / deletion: Drive Audio does not create accounts.
+    Users sign in with their existing Google account via Google's OAuth
+    (Sign in with Google), and the app stores nothing about the user on any
+    server — there is no server. "Sign Out" (top-right account menu) erases
+    the stored Google tokens from the device. Users can additionally revoke
+    the app from their Google Account permissions, which is shown in the
+    recording. Because no account is created, there is no account-deletion
+    flow to provide.
+
+    User-generated content: the only content users create is private,
+    timestamped text notes stored solely on their own device. Notes are
+    never uploaded, shared, or visible to any other user of the app, so
+    content reporting and blocking mechanisms do not apply. Audio files come
+    from the user's own Google Drive.
+
+    Paid content: none. The app is free with no in-app purchases.
+
+    2. PURPOSE AND AUDIENCE
+    Drive Audio plays audio files that users already store in Google Drive —
+    music mixes, demos, rehearsal recordings, voice memos — as folder
+    playlists, online or offline, with Lock Screen and CarPlay controls. Its
+    audience is musicians and producers who trade works-in-progress through
+    shared Drive folders and need to (a) listen to them conveniently on the
+    go, and (b) capture feedback tied to exact timestamps ("kick too loud at
+    0:52") and send it back to collaborators as text. Google Drive's own app
+    plays one file at a time with no playlist, background queue, offline
+    folder download, or timestamped notes.
+
+    3. SETUP AND ACCESS
+    Sign in with this Google account, which contains sample audio:
+      Email:    <demo account email>
+      Password: <password>
+      2-Step Verification backup codes (if prompted): <codes>
+    Google may show an "unverified app" notice while our Google OAuth
+    verification is in progress; tap "Advanced" → "Go to Drive Audio
+    (unsafe)" to continue. (Google's verification of this app is under way
+    concurrently; it does not affect functionality.)
+    Suggested flow: My Drive → "Spring mixes" → Play Folder. Lock the device
+    to see Now Playing controls. Tap "Note Here" to add a note; tap the note
+    count in the player to view/export notes. Swipe a track or tap
+    "Download All", then enable Airplane Mode and play. Tap the title
+    ("Spring mixes ▾") to switch to Shared with me / Shared drives / Starred.
+
+    4. EXTERNAL SERVICES
+    - Google Sign-In (OAuth 2.0 with PKCE, via ASWebAuthenticationSession)
+      for authentication.
+    - Google Drive API v3 for listing folders/files and streaming or
+      downloading audio, with the read-only scope drive.readonly.
+    That is the complete list. No analytics, crash reporting, advertising,
+    payment, AI, or backend services are used. The developer operates no
+    servers; all app data is stored on the device.
+
+    5. REGIONAL DIFFERENCES
+    None. The app functions identically in all regions. It requires a Google
+    account with Google Drive; availability of Google services is governed
+    by Google.
+
+    6. REGULATED INDUSTRY / PROTECTED MATERIAL
+    Not applicable. The app does not operate in a regulated industry and
+    contains no third-party content of its own. It plays only files the
+    signed-in user has stored in, or been granted access to in, their own
+    Google Drive, in the same way a file manager or media player app does.
+    The sample audio in the demo account is original material owned by the
+    developer.
+
+### Apple — screen recording script (3–4 minutes, physical iPhone)
+
+    Settings → Control Center → add Screen Recording. Charge to 100%, clear
+    notifications, Do Not Disturb on. Start recording from the Home Screen.
+
+    0:00  Tap the Drive Audio icon. Sign-in screen appears.
+    0:05  Tap Continue with Google → choose demo account → (Advanced → Go to
+          Drive Audio if the unverified notice appears) → Continue on the
+          consent screen. App opens on My Drive.
+    0:35  Open "Spring mixes". Scroll the list. Tap Play Folder — audio plays.
+    0:50  Lock the phone (side button). Wake it: show Now Playing on the
+          Lock Screen; tap pause/play, drag the scrubber. Unlock.
+    1:10  In the app: tap Note Here. Type "kick a touch loud in the intro".
+          Save. Show the note count increment and the marker on the scrubber.
+    1:30  Tap the note count → notes sheet. Tap the timestamp chip (jumps
+          there). Tap Export → Copy Notes. Open Notes app, paste, show the
+          formatted text. Return to Drive Audio.
+    2:00  Swipe a track → Download. Then tap Download All; let it finish.
+    2:20  Control Center → Airplane Mode on. Play a downloaded track. Airplane
+          Mode off.
+    2:35  Tap the title → Shared with me. Open the shared folder, show
+          "Shared by" lines, play a track.
+    2:55  Account menu (top-right) → show Clear Cache option → Sign Out.
+          Sign-in screen returns.
+    3:05  Stop recording. (Optional: show Settings → Drive Audio has no
+          special permissions.)
 
 ---
 
