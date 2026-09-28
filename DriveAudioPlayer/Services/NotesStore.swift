@@ -2,15 +2,35 @@ import Foundation
 import Observation
 
 /// On-device timestamped notes, keyed by Drive file ID (which is stable across
-/// uploaded versions of a file). Nothing is written to Drive.
+/// uploaded versions of a file) and scoped to the signed-in Google account.
+/// Nothing is written to Drive.
 @Observable @MainActor
 final class NotesStore {
     private(set) var notes: [TrackNote] = []
-    private let fileURL: URL = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0].appending(path: "DriveAudio/notes.json")
+    private let directory = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0].appending(path: "DriveAudio")
+    private var legacyURL: URL { directory.appending(path: "notes.json") }
+    private var fileURL: URL?
 
-    func load() {
-        guard let data = try? Data(contentsOf: fileURL) else { return }
+    /// Switches to the given account's notes.
+    func setAccount(_ id: String?) {
+        notes = []
+        fileURL = id.map { directory.appending(path: "notes.\($0).json") }
+        guard let fileURL, let data = try? Data(contentsOf: fileURL) else { return }
         notes = (try? JSONDecoder().decode([TrackNote].self, from: data)) ?? []
+    }
+
+    /// Notes saved before per-account scoping are adopted, per track, by the
+    /// first signed-in account that can open that track (see FavoritesStore).
+    func adoptLegacy(accessible: (String) async -> Bool) async {
+        guard fileURL != nil, let data = try? Data(contentsOf: legacyURL),
+              let legacy = try? JSONDecoder().decode([TrackNote].self, from: data), !legacy.isEmpty else { return }
+        var adoptedFiles = Set<String>()
+        for fileID in Set(legacy.map(\.fileID)) where await accessible(fileID) { adoptedFiles.insert(fileID) }
+        notes += legacy.filter { adoptedFiles.contains($0.fileID) && !notes.contains($0) }
+        let remaining = legacy.filter { !adoptedFiles.contains($0.fileID) }
+        if remaining.isEmpty { try? FileManager.default.removeItem(at: legacyURL) }
+        else { try? JSONEncoder().encode(remaining).write(to: legacyURL, options: .atomic) }
+        save()
     }
 
     func notes(for file: DriveFile) -> [TrackNote] {
@@ -70,7 +90,8 @@ final class NotesStore {
     }
 
     private func save() {
-        try? FileManager.default.createDirectory(at: fileURL.deletingLastPathComponent(), withIntermediateDirectories: true)
+        guard let fileURL else { return }
+        try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         try? JSONEncoder().encode(notes).write(to: fileURL, options: .atomic)
     }
 }

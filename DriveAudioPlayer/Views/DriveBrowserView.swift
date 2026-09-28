@@ -121,6 +121,9 @@ private struct AccountMenu: View {
 
     var body: some View {
         Menu {
+            if let label = app.account?.emailAddress ?? app.account?.displayName {
+                Section("Signed in as \(label)") {}
+            }
             Section("Cached on Wi‑Fi while playing (up to 1 GB)") {
                 Button("Clear Cache (\(ByteCountFormatter.string(fromByteCount: app.cache.totalBytes, countStyle: .file)))", systemImage: "internaldrive") { app.cache.clear() }
                     .disabled(app.cache.totalBytes == 0)

@@ -60,8 +60,13 @@ enum DriveMIME {
 struct DriveUser: Codable, Hashable, Sendable {
     let displayName: String?
     let emailAddress: String?
+    /// Stable per-account identifier from the Drive API; used to namespace
+    /// on-device data so accounts on the same phone don't see each other's.
+    var permissionId: String? = nil
     var label: String? { displayName ?? emailAddress }
 }
+
+struct DriveAboutResponse: Codable, Sendable { let user: DriveUser }
 
 enum DriveLocation: String, CaseIterable, Identifiable, Sendable {
     case myDrive

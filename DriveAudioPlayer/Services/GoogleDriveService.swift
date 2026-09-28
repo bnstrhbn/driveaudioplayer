@@ -13,6 +13,12 @@ actor GoogleDriveService {
     private let fileFields = "id,name,mimeType,modifiedTime,size,driveId,starred,parents,ownedByMe,sharedWithMeTime,sharingUser(displayName,emailAddress),owners(displayName,emailAddress),shortcutDetails(targetId,targetMimeType)"
     private var myDriveRootID: String?
 
+    /// The signed-in Google account, from the Drive API (no extra scope needed).
+    func currentUser() async throws -> DriveUser {
+        let about: DriveAboutResponse = try await request(path: "about", query: ["fields": "user(displayName,emailAddress,permissionId)"])
+        return about.user
+    }
+
     func file(id: String) async throws -> DriveFile {
         try await request(path: "files/\(id)", query: ["fields": fileFields, "supportsAllDrives": "true"])
     }

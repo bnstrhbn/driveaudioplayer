@@ -36,19 +36,22 @@ final class AppState {
         return cache.localURL(for: file)
     }
 
+    /// The signed-in Google account (from the Drive API). Shown in the account
+    /// menu and used to keep favorites and notes separate per account.
+    private(set) var account: DriveUser?
+    private static let accountKey = "currentAccountID"
+
     func restore() async {
         await downloads.load()
         cache.load()
-        favorites.load()
-        notes.load()
-        if await auth.restoreSession() { await connectDrive() } else { phase = .signedOut }
+        if await auth.restoreSession() { await connectDrive(restored: true) } else { phase = .signedOut }
     }
 
     func signIn() async {
         phase = .loading
         do {
             try await auth.signIn()
-            await connectDrive()
+            await connectDrive(restored: false)
         } catch { phase = .failure(error.localizedDescription) }
     }
 
@@ -56,13 +59,14 @@ final class AppState {
         await auth.signOut()
         await drive.setTokenProvider(nil)
         player.stop()
+        setAccount(nil)
         phase = .signedOut
     }
 
     /// Drive fetches a fresh token for every request so playback can outlive
     /// Google's one-hour access tokens. Only a dead refresh token (not a
     /// network hiccup) sends the user back to sign in.
-    private func connectDrive() async {
+    private func connectDrive(restored: Bool) async {
         let auth = auth
         await drive.setTokenProvider { [weak self] in
             do { return try await auth.validAccessToken() } catch GoogleAuthService.AuthError.sessionExpired {
@@ -70,7 +74,26 @@ final class AppState {
                 throw GoogleAuthService.AuthError.sessionExpired
             }
         }
+        // Offline launches fall back to the last known account so favorites and
+        // notes are available immediately; the network answer replaces it.
+        if restored, let saved = UserDefaults.standard.string(forKey: Self.accountKey) {
+            setAccount(DriveUser(displayName: nil, emailAddress: nil, permissionId: saved))
+        }
         phase = .signedIn
+        guard let user = try? await drive.currentUser() else { return }
+        if user.permissionId != account?.permissionId || account?.emailAddress == nil { setAccount(user) }
+        // Data saved before per-account scoping is claimed by whichever account
+        // can actually open the folder/track, so nothing lands in the wrong account.
+        let drive = drive
+        await favorites.adoptLegacy { file in (try? await drive.file(id: file.id)) != nil }
+        await notes.adoptLegacy { id in (try? await drive.file(id: id)) != nil }
+    }
+
+    private func setAccount(_ user: DriveUser?) {
+        account = user
+        UserDefaults.standard.set(user?.permissionId, forKey: Self.accountKey)
+        favorites.setAccount(user?.permissionId)
+        notes.setAccount(user?.permissionId)
     }
 
     private func sessionDidExpire() async {
