@@ -464,6 +464,7 @@ struct MiniPlayerView: View {
     @Environment(AppState.self) private var app
     @State private var scrubPosition = 0.0
     @State private var isScrubbing = false
+    @State private var lastSliderSet = Date.distantPast
     @State private var noteDraft: NoteDraft?
     @State private var showingNotes = false
     @State private var resumeAfterNote = false
@@ -534,17 +535,21 @@ struct MiniPlayerView: View {
             Slider(
                 value: Binding(
                     get: { isScrubbing ? scrubPosition : progress },
-                    // A value change can arrive before onEditingChanged(true);
-                    // treat it as the start of a scrub so the thumb never snaps back.
-                    set: { scrubPosition = $0; isScrubbing = true }
+                    // Only remember the value here. Slider also calls the setter
+                    // during non-user updates, so it must never start a scrub —
+                    // a stuck isScrubbing freezes the whole timeline.
+                    set: { scrubPosition = $0; lastSliderSet = .now }
                 ),
                 in: 0...1,
                 onEditingChanged: { editing in
                     if editing {
-                        if !isScrubbing { scrubPosition = progress; isScrubbing = true }
+                        // A drag's first value can land just before this callback;
+                        // keep it, otherwise seed from the live position.
+                        if Date.now.timeIntervalSince(lastSliderSet) > 0.25 { scrubPosition = progress }
+                        isScrubbing = true
                     } else {
-                        app.player.seek(to: scrubPosition * app.player.duration)
                         isScrubbing = false
+                        app.player.seek(to: scrubPosition * app.player.duration)
                     }
                 }
             )
@@ -604,6 +609,7 @@ struct MiniPlayerView: View {
     /// Pause first so the captured time is exactly what the user just heard.
     private func beginNote() {
         guard let current = app.player.current else { return }
+        isScrubbing = false
         resumeAfterNote = app.player.isPlaying
         if app.player.isPlaying { app.player.toggle() }
         noteDraft = NoteDraft(file: current, timestamp: app.player.livePosition)
