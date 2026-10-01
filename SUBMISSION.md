@@ -111,8 +111,8 @@ Links used below:
     To test, sign in with the demo Google account below; its Drive contains
     sample folders under My Drive plus a folder under "Shared with me".
 
-      Google account: <demo account email>
-      Password:       <password>
+      Google account: demobdstest@gmail.com
+      Password:       demobdstest123!@#
       (If Google asks for 2-step verification, the backup codes are: <codes>)
 
     Suggested flow:
@@ -372,6 +372,15 @@ Connect via the attachment option in the reply, or host it unlisted and
 link it. Then send:
 
     Thank you for the review. Responses to each item:
+
+    DISTRIBUTION
+    This app is intended for Unlisted App Distribution (link-only) to a
+    specific group of musicians who exchange recordings through shared Google
+    Drive folders. We have submitted the Unlisted App Distribution request
+    for Apple ID 6814621990. Because the audience is deliberately small, our
+    Google OAuth client is not Google-verified; Google shows a one-time
+    "unverified app" notice at sign-in (tap Advanced → Go to Drive Audio),
+    which is expected and does not affect functionality.
 
     1. SCREEN RECORDING
     Attached / available at: <RECORDING_URL>. Recorded on an iPhone running
