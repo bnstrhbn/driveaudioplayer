@@ -87,6 +87,26 @@ final class AppState {
         let drive = drive
         await favorites.adoptLegacy { file in (try? await drive.file(id: file.id)) != nil }
         await notes.adoptLegacy { id in (try? await drive.file(id: id)) != nil }
+        await sweepStorage()
+    }
+
+    // MARK: Storage hygiene
+
+    private static let lastSweepKey = "lastStorageSweep"
+    private(set) var isSweeping = false
+
+    /// Verifies stored files against Drive so storage isn't held by files that
+    /// were deleted or unshared. One small request per stored file, so it runs
+    /// at most daily and only on unmetered networks unless forced by the user.
+    func sweepStorage(force: Bool = false) async {
+        guard phase == .signedIn, !isSweeping else { return }
+        let last = UserDefaults.standard.object(forKey: Self.lastSweepKey) as? Date ?? .distantPast
+        guard force || (Date.now.timeIntervalSince(last) > 24 * 3600 && !player.isOnExpensiveNetwork) else { return }
+        isSweeping = true
+        defer { isSweeping = false }
+        await cache.evictOrphans(with: drive)
+        await downloads.verify(with: drive)
+        UserDefaults.standard.set(Date.now, forKey: Self.lastSweepKey)
     }
 
     private func setAccount(_ user: DriveUser?) {

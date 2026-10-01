@@ -18,8 +18,10 @@
 		697FEEA007C68F60F64B07A6 /* DriveAudioPlayerApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 47BE2178663C8915E48703F0 /* DriveAudioPlayerApp.swift */; };
 		6FD6F4B3C00961A44CFA84FB /* DriveBrowserView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D72F961A21E9B8CFFD3F4B8E /* DriveBrowserView.swift */; };
 		761FC0DA0DF6A2B5D1C97761 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 905479060F56E3152E2EF14A /* PrivacyInfo.xcprivacy */; };
+		7A665C8FC2F8533D148795EE /* StorageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 64DED7DDA65232875CF2B3F1 /* StorageView.swift */; };
 		933A34CFA7825A7CDEFDEBF5 /* AppState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 12686D200DE672B1F91CD78E /* AppState.swift */; };
 		C07FC2D72A86D5EF43729E56 /* GoogleDriveService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C47B0BDF4E7613F4A333363 /* GoogleDriveService.swift */; };
+		C2509573ABCA742143783EE9 /* StorageUtility.swift in Sources */ = {isa = PBXBuildFile; fileRef = A882F60A00542135B8E34FD6 /* StorageUtility.swift */; };
 		C66128D20F1D955812A9E371 /* AudioPlayerService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 89286A1391D2D96097C9338A /* AudioPlayerService.swift */; };
 		D3B8BC4B4B0D820E54C1805B /* DownloadStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1DBCE6D743D1B9E504EB8C0E /* DownloadStore.swift */; };
 		DAE46BD5B1CBFA48EAD2C43A /* DriveModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8E8420A0E32C760D4BE512DC /* DriveModels.swift */; };
@@ -34,6 +36,7 @@
 		2ADDFD50FBBFEEF5C0D792D4 /* DriveAudioPlayer.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = DriveAudioPlayer.entitlements; sourceTree = "<group>"; };
 		42761DD8A15F90BFBC751B01 /* DriveAudioPlayer.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = DriveAudioPlayer.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		47BE2178663C8915E48703F0 /* DriveAudioPlayerApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DriveAudioPlayerApp.swift; sourceTree = "<group>"; };
+		64DED7DDA65232875CF2B3F1 /* StorageView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StorageView.swift; sourceTree = "<group>"; };
 		6B866822ECFA5E3875109BE8 /* NotesStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotesStore.swift; sourceTree = "<group>"; };
 		7C47B0BDF4E7613F4A333363 /* GoogleDriveService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GoogleDriveService.swift; sourceTree = "<group>"; };
 		805C5C8A9B2FD9238A8D9C43 /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
@@ -43,6 +46,7 @@
 		8FFED4475CD066DDEB099C91 /* PlaybackCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlaybackCache.swift; sourceTree = "<group>"; };
 		905479060F56E3152E2EF14A /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		9FAA3EC3963685116F072E6F /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		A882F60A00542135B8E34FD6 /* StorageUtility.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StorageUtility.swift; sourceTree = "<group>"; };
 		B9C0360716C7495AC0DC542E /* GoogleAuthService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GoogleAuthService.swift; sourceTree = "<group>"; };
 		CE1A5847EC066AE9B4402F9D /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		D67C23F67DF119205E4030E7 /* GoogleService-Info.example.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = "GoogleService-Info.example.plist"; sourceTree = "<group>"; };
@@ -56,6 +60,7 @@
 				D72F961A21E9B8CFFD3F4B8E /* DriveBrowserView.swift */,
 				1628A47122DF3BA57FAB24F4 /* NotesViews.swift */,
 				805C5C8A9B2FD9238A8D9C43 /* RootView.swift */,
+				64DED7DDA65232875CF2B3F1 /* StorageView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -83,6 +88,7 @@
 				046B3F5263412C29B9346E67 /* Keychain.swift */,
 				6B866822ECFA5E3875109BE8 /* NotesStore.swift */,
 				8FFED4475CD066DDEB099C91 /* PlaybackCache.swift */,
+				A882F60A00542135B8E34FD6 /* StorageUtility.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -218,6 +224,8 @@
 				131DCB0611F25739455FAE1C /* NotesViews.swift in Sources */,
 				38D7D77022C6AA5903BDAA4F /* PlaybackCache.swift in Sources */,
 				4453EB475E3448D1EBD711B8 /* RootView.swift in Sources */,
+				C2509573ABCA742143783EE9 /* StorageUtility.swift in Sources */,
+				7A665C8FC2F8533D148795EE /* StorageView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

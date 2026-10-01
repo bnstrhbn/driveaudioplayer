@@ -4,7 +4,12 @@ actor GoogleDriveService {
     typealias TokenProvider = @Sendable () async throws -> String
     private var tokenProvider: TokenProvider?
     private let baseURL = URL(string: "https://www.googleapis.com/drive/v3")!
-    func setTokenProvider(_ provider: TokenProvider?) { tokenProvider = provider; invalidateAudioIndex() }
+    /// Signing out (nil) discards the persisted index since the next account's
+    /// Drive is different; reconnecting the same session keeps it.
+    func setTokenProvider(_ provider: TokenProvider?) {
+        tokenProvider = provider
+        if provider == nil { invalidateAudioIndex() } else { audioIndexes = [:]; probedFolders = [:] }
+    }
     private func accessToken() async throws -> String {
         guard let tokenProvider else { throw DriveError.notAuthenticated }
         return try await tokenProvider()
@@ -17,6 +22,23 @@ actor GoogleDriveService {
     func currentUser() async throws -> DriveUser {
         let about: DriveAboutResponse = try await request(path: "about", query: ["fields": "user(displayName,emailAddress,permissionId)"])
         return about.user
+    }
+
+    enum Availability { case available, gone, unknown }
+
+    /// Whether a stored file still exists in Drive for this account. Only a
+    /// definitive 404/403 or `trashed` counts as gone; network or server errors
+    /// are `unknown` so offline sweeps never discard anything.
+    func availability(of fileID: String) async -> Availability {
+        struct Probe: Decodable { let trashed: Bool? }
+        do {
+            let probe: Probe = try await request(path: "files/\(fileID)", query: ["fields": "trashed", "supportsAllDrives": "true"])
+            return probe.trashed == true ? .gone : .available
+        } catch DriveError.requestFailed(let status, _) where status == 404 || status == 403 {
+            return .gone
+        } catch {
+            return .unknown
+        }
     }
 
     func file(id: String) async throws -> DriveFile {
@@ -121,9 +143,10 @@ actor GoogleDriveService {
     /// Which folders in a corpus contain playable audio anywhere beneath them.
     /// Built from two listings (all folders, all audio files) rather than
     /// walking the tree, so it costs a few requests instead of one per folder.
-    private struct AudioIndex {
+    private struct AudioIndex: Codable {
         var folders: [String: DriveIndexEntry] = [:]
         var withAudio: Set<String> = []
+        var builtAt = Date()
 
         /// The index is authoritative only for subtrees it can fully see:
         /// everything in a shared drive, or folders the user owns in My Drive.
@@ -141,7 +164,7 @@ actor GoogleDriveService {
     /// rather than spending more requests on it.
     private let probeLimit = 40
 
-    func invalidateAudioIndex() { audioIndexes = [:]; probedFolders = [:] }
+    func invalidateAudioIndex() { audioIndexes = [:]; probedFolders = [:]; try? FileManager.default.removeItem(at: indexDirectory) }
 
     /// IDs of the given folders that (transitively) contain audio. Uses the
     /// index where it is authoritative and probes the remaining folders' subtrees
@@ -196,12 +219,31 @@ actor GoogleDriveService {
     }
     private let indexFields = "id,name,mimeType,parents,ownedByMe,shortcutDetails(targetId,targetMimeType)"
 
+    /// Building the index means listing every folder and audio file in the
+    /// corpus; persisting it for a few hours spares that radio burst on most
+    /// launches. Pull-to-refresh calls `invalidateAudioIndex`, which also
+    /// discards the persisted copy.
+    private static let indexTTL: TimeInterval = 6 * 3600
+    private let indexDirectory = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0].appending(path: "DriveAudio/Index")
+    private func indexURL(for key: String) -> URL { indexDirectory.appending(path: "\(key).json") }
+
     private func audioIndex(driveID: String?) async throws -> AudioIndex {
         let key = driveID ?? "user"
         if let task = audioIndexes[key] { return try await task.value }
-        let task = Task { try await buildAudioIndex(driveID: driveID) }
+        let task = Task { try await loadOrBuildAudioIndex(key: key, driveID: driveID) }
         audioIndexes[key] = task
         do { return try await task.value } catch { audioIndexes[key] = nil; throw error }
+    }
+
+    private func loadOrBuildAudioIndex(key: String, driveID: String?) async throws -> AudioIndex {
+        if let data = try? Data(contentsOf: indexURL(for: key)), let saved = try? JSONDecoder().decode(AudioIndex.self, from: data),
+           Date.now.timeIntervalSince(saved.builtAt) < Self.indexTTL {
+            return saved
+        }
+        let built = try await buildAudioIndex(driveID: driveID)
+        try? FileManager.default.createDirectory(at: indexDirectory, withIntermediateDirectories: true)
+        try? JSONEncoder().encode(built).write(to: indexURL(for: key), options: .atomic)
+        return built
     }
 
     private func buildAudioIndex(driveID: String?) async throws -> AudioIndex {

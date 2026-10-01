@@ -118,21 +118,29 @@ private extension View {
 
 private struct AccountMenu: View {
     @Environment(AppState.self) private var app
+    @State private var showingStorage = false
 
     var body: some View {
         Menu {
             if let label = app.account?.emailAddress ?? app.account?.displayName {
                 Section("Signed in as \(label)") {}
             }
-            Section("Cached on Wi‑Fi while playing (up to 1 GB)") {
-                Button("Clear Cache (\(ByteCountFormatter.string(fromByteCount: app.cache.totalBytes, countStyle: .file)))", systemImage: "internaldrive") { app.cache.clear() }
-                    .disabled(app.cache.totalBytes == 0)
+            Button {
+                showingStorage = true
+            } label: {
+                Label("Storage (\(StorageUtility.format(app.downloads.totalBytes + app.cache.totalBytes)))", systemImage: "internaldrive")
             }
             Button("Sign Out", role: .destructive) { Task { await app.signOut() } }
         } label: {
             Image(systemName: "person.crop.circle")
+                .overlay(alignment: .topTrailing) {
+                    if !app.downloads.unavailable.isEmpty {
+                        Circle().fill(.orange).frame(width: 8, height: 8).offset(x: 2, y: -2)
+                    }
+                }
         }
         .accessibilityLabel("Account")
+        .sheet(isPresented: $showingStorage) { StorageView() }
     }
 }
 

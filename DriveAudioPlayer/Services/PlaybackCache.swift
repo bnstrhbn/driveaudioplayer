@@ -16,22 +16,49 @@ final class PlaybackCache {
         var modifiedTime: String? = nil
     }
 
+    static let limitOptions: [Int64] = [250_000_000, 500_000_000, 1_000_000_000, 2_000_000_000]
     static let defaultLimit: Int64 = 1_000_000_000
+    /// Never cache into the last slice of free space; iOS gets unhappy well
+    /// before zero and the user's photos matter more than our prefetch.
+    private static let minimumFreeSpace: Int64 = 1_000_000_000
+    private static let limitKey = "playbackCacheLimit"
 
     private(set) var entries: [Entry] = []
     private var inFlight = Set<String>()
     private let directory: URL = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0].appending(path: "DriveAudio/PlaybackCache")
     private var indexURL: URL { directory.appending(path: "index.json") }
-    var limit: Int64 = defaultLimit
+    var limit: Int64 {
+        didSet { UserDefaults.standard.set(limit, forKey: Self.limitKey); evictIfNeeded(); save() }
+    }
+
+    init() {
+        let saved = UserDefaults.standard.object(forKey: Self.limitKey) as? Int64
+        limit = saved ?? Self.defaultLimit
+    }
 
     var totalBytes: Int64 { entries.reduce(0) { $0 + $1.bytes } }
 
     func load() {
         try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        StorageUtility.excludeFromBackup(directory)
         guard let data = try? Data(contentsOf: indexURL) else { return }
         entries = ((try? JSONDecoder().decode([Entry].self, from: data)) ?? [])
             .filter { FileManager.default.fileExists(atPath: directory.appending(path: $0.relativePath).path) }
         save()
+    }
+
+    /// Drops cached copies of files that no longer exist in Drive. Unlike
+    /// downloads these are disposable, so they go immediately.
+    @discardableResult
+    func evictOrphans(with drive: GoogleDriveService) async -> Int {
+        var removed = 0
+        for entry in entries where await drive.availability(of: entry.fileID) == .gone {
+            try? FileManager.default.removeItem(at: directory.appending(path: entry.relativePath))
+            entries.removeAll { $0.fileID == entry.fileID }
+            removed += 1
+        }
+        if removed > 0 { save() }
+        return removed
     }
 
     /// The cached file for a track, if present and current. Marks it as recently
@@ -70,6 +97,9 @@ final class PlaybackCache {
     /// `unless` lets the caller skip tracks that already exist elsewhere.
     func cache(_ file: DriveFile, from drive: GoogleDriveService, unless alreadyStored: @MainActor () -> Bool = { false }) async {
         guard !contains(file), !inFlight.contains(file.id), !alreadyStored() else { return }
+        // Don't fill a nearly-full phone with optional prefetches.
+        let expected = Int64(file.size ?? "") ?? 0
+        guard StorageUtility.availableForOpportunisticUse - expected > Self.minimumFreeSpace else { return }
         inFlight.insert(file.id)
         defer { inFlight.remove(file.id) }
         guard let request = try? await drive.authorizedRequest(for: file),

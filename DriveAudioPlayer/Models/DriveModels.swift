@@ -153,5 +153,9 @@ struct DownloadRecord: Codable, Identifiable, Hashable, Sendable {
     /// Drive keeps a file's ID across uploaded versions, so the version is
     /// tracked by `modifiedTime`. nil for records saved before this existed.
     var modifiedTime: String? = nil
+    var bytes: Int64? = nil
+    /// Set when a verification sweep found the file deleted, trashed or no
+    /// longer shared with this account. The copy is kept until the user acts.
+    var unavailableSince: Date? = nil
     var id: String { fileID }
 }
